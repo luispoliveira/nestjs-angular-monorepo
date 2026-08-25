@@ -1,3 +1,13 @@
+## v1.5.0 (2026-08-25)
+
+## What's Changed
+* chore: bump package version by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/17
+* Regenerate opsx skills for openspec 1.10.0 by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/20
+* Bump version to 1.5.0 and update opsx skills by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/22
+
+
+**Full Changelog**: https://github.com/luispoliveira/nestjs-nextjs-monorepo/compare/v1.4.0...v1.5.0
+
 ## v1.4.0 (2026-07-14)
 
 ## What's Changed

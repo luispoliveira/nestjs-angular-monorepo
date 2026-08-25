@@ -1,7 +1,7 @@
 {
   "name": "nestjs-nextjs-monorepo",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "build": "turbo run build",

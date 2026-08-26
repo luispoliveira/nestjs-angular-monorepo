@@ -1,3 +1,11 @@
+# Env Validation
+
+## Purpose
+
+Defines how each app validates its own environment variables before serving traffic, so a missing or malformed configuration value fails loudly at boot or build time rather than producing a silently broken runtime.
+
+## Requirements
+
 ### Requirement: NestJS apps fail at boot when required env vars are missing
 
 Each NestJS application (auth, api, notifications, worker) SHALL validate its environment variables during the NestJS bootstrap phase, before any request is served. If any required variable is absent or fails type/format constraints, the process SHALL exit with a non-zero status code and a structured error message listing every invalid variable.
@@ -58,25 +66,37 @@ The system SHALL accept numeric environment variables (e.g. `PORT`, `REDIS_PORT`
 
 ### Requirement: apps/web validates env vars at module load time
 
-The Next.js app (`apps/web`) SHALL export a validated `env` object from `apps/web/env.ts`. This module SHALL use `z.parse()` at the top level, causing a build-time or startup failure if any required variable is missing.
+The browser application (`apps/web`) SHALL expose its configuration as a schema-validated object built at build time, not read from the process environment at runtime. Validation SHALL run at the top level of that module, causing the production build to fail if any required value is missing or malformed. The application SHALL NOT depend on reading environment variables in the browser at runtime, and SHALL NOT fetch its configuration over the network before it can start.
 
-#### Scenario: Next.js build fails when AUTH_API_URL is missing
+#### Scenario: Build fails when a required config value is missing
 
-- **WHEN** `next build` runs without `AUTH_API_URL` defined
+- **WHEN** the browser application's production build runs without a required configuration value defined
 - **THEN** the build process exits with a non-zero code
-- **THEN** the error identifies `AUTH_API_URL` as missing
+- **THEN** the error identifies the missing value by name
 
-#### Scenario: Server utility imports validated env
+#### Scenario: Application code imports validated config
 
-- **WHEN** `apps/web/lib/auth/server.ts` (or any server utility) reads `AUTH_API_URL`
-- **THEN** it imports from `env.ts` rather than reading `process.env` directly
-- **THEN** the value is guaranteed to be a non-empty string
+- **WHEN** any application module needs a configuration value, such as the authentication service origin
+- **THEN** it imports it from the validated configuration module rather than reading the process environment
+- **THEN** the value is guaranteed to satisfy its schema
+
+#### Scenario: Same-origin API needs no configured host
+
+- **WHEN** the application addresses its own backend API
+- **THEN** it uses a relative path prefix
+- **THEN** no absolute host for its own API is required in the configuration
+
+#### Scenario: Cross-origin auth service is configured per environment
+
+- **WHEN** the application addresses the authentication service
+- **THEN** it uses an absolute origin taken from the validated configuration
+- **THEN** that value differs between local, QA and production builds
 
 ---
 
 ### Requirement: No direct process.env reads inside app business logic
 
-App code (services, modules, guards, controllers) SHALL NOT read `process.env` directly. All env access SHALL go through `ConfigService.get()` (NestJS apps) or the `env` object from `env.ts` (Next.js). The only exception is `main.ts`.
+App code (services, modules, guards, controllers, components) SHALL NOT read `process.env` directly. All env access SHALL go through `ConfigService.get()` (NestJS apps) or the validated configuration module (browser application). The only exception is `main.ts`.
 
 #### Scenario: Social provider credentials via ConfigService
 
@@ -88,3 +108,9 @@ App code (services, modules, guards, controllers) SHALL NOT read `process.env` d
 - **WHEN** `GOOGLE_CLIENT_ID` is absent from the environment
 - **THEN** Google OAuth is silently disabled (social provider block omitted)
 - **THEN** the auth app boots successfully without requiring it
+
+#### Scenario: Browser application reads configuration
+
+- **WHEN** a component, guard or service in the browser application needs a configuration value
+- **THEN** it imports the validated configuration module
+- **THEN** it does not reference `process.env`

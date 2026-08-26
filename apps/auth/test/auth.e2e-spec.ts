@@ -97,4 +97,105 @@ describe('auth app (E2E)', () => {
         .expect(200);
     });
   });
+
+  describe('POST /api/auth/sign-in/email — origin validation', () => {
+    // better-auth always implicitly trusts its own BETTER_AUTH_URL origin
+    // (http://localhost:3001 here), so that alone would prove nothing about
+    // the CORS_ORIGIN-derived trustedOrigins wiring. Use the second entry in
+    // apps/auth/.env.test's CORS_ORIGIN — the Angular dev origin — instead,
+    // since it is trusted *only* because of that configuration.
+    const trustedOrigin = 'http://localhost:4200';
+    const untrustedOrigin = 'http://evil.example.com';
+    let testEmail: string;
+
+    beforeAll(async () => {
+      testEmail = `e2e-origin-${Date.now()}@example.com`;
+      await supertest(app.getHttpServer())
+        .post('/api/auth/sign-up/email')
+        .send({
+          email: testEmail,
+          password: TEST_PASSWORD,
+          name: 'Origin Test User',
+        });
+      await db.user.updateMany({
+        where: { email: testEmail },
+        data: { emailVerified: true },
+      });
+    });
+
+    // better-auth only runs origin validation once a request carries a cookie
+    // (any cookie, not just the session token) — a bare cookie is enough to
+    // trigger it without needing a valid session.
+    it('rejects a credentialed request from an untrusted origin', async () => {
+      const response = await supertest(app.getHttpServer())
+        .post('/api/auth/sign-in/email')
+        .set('Cookie', 'probe=1')
+        .set('Origin', untrustedOrigin)
+        .send({ email: testEmail, password: TEST_PASSWORD });
+
+      expect(response.status).toBe(403);
+      expect(JSON.stringify(response.body).toLowerCase()).toContain('origin');
+    });
+
+    it('accepts a credentialed request from a trusted origin', async () => {
+      const response = await supertest(app.getHttpServer())
+        .post('/api/auth/sign-in/email')
+        .set('Cookie', 'probe=1')
+        .set('Origin', trustedOrigin)
+        .send({ email: testEmail, password: TEST_PASSWORD });
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('session cookie attributes', () => {
+    async function signUpAndSignIn(
+      server: Parameters<typeof supertest>[0],
+      emailPrefix: string,
+    ) {
+      const testEmail = `${emailPrefix}-${Date.now()}@example.com`;
+      await supertest(server).post('/api/auth/sign-up/email').send({
+        email: testEmail,
+        password: TEST_PASSWORD,
+        name: 'Cookie Test User',
+      });
+      await db.user.updateMany({
+        where: { email: testEmail },
+        data: { emailVerified: true },
+      });
+
+      const signInRes = await supertest(server)
+        .post('/api/auth/sign-in/email')
+        .send({ email: testEmail, password: TEST_PASSWORD });
+
+      const cookies: string[] = Array.isArray(signInRes.headers['set-cookie'])
+        ? signInRes.headers['set-cookie']
+        : [signInRes.headers['set-cookie']].filter(Boolean);
+
+      return cookies.find((c) => c.includes('session_token='));
+    }
+
+    it('sets HttpOnly and SameSite=Lax, and omits Secure, on an http BETTER_AUTH_URL', async () => {
+      // apps/auth/.env.test sets BETTER_AUTH_URL="http://localhost:3001/api/auth"
+      const sessionCookie = await signUpAndSignIn(
+        app.getHttpServer(),
+        'e2e-cookie-http',
+      );
+
+      expect(sessionCookie).toBeTruthy();
+      expect(sessionCookie).toMatch(/HttpOnly/i);
+      expect(sessionCookie).toMatch(/SameSite=Lax/i);
+      expect(sessionCookie).not.toMatch(/;\s*Secure/i);
+      expect(sessionCookie).not.toMatch(/^__Secure-/);
+    });
+
+    // The Secure attribute / __Secure- prefix for an https BETTER_AUTH_URL is
+    // covered by test/cookie-secure-prefix.e2e-spec.ts, not here: NestJS's
+    // ConfigModule reads and validates the env synchronously the first time
+    // app.module.ts is imported (at this file's top-level `import { AppModule }`),
+    // and that resolved config is baked into the AppModule class metadata —
+    // a second Test.createTestingModule({ imports: [AppModule] }) in the same
+    // process reuses it regardless of later process.env mutations, so an
+    // https override cannot be exercised by booting a second app here.
+  });
 });

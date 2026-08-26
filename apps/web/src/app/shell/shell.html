@@ -1,0 +1,31 @@
+<mat-toolbar color="primary" class="flex items-center justify-between">
+  <span>Admin Dashboard</span>
+  <div class="flex items-center gap-3">
+    @if (userName(); as name) {
+      <span data-testid="user-name">{{ name }}</span>
+    }
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="theme.mode() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      (click)="theme.toggle()"
+    >
+      <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+    <button mat-button (click)="signOut()">Sign out</button>
+  </div>
+</mat-toolbar>
+
+<mat-sidenav-container class="h-[calc(100%-64px)]">
+  <mat-sidenav mode="side" opened>
+    <mat-nav-list>
+      @for (entry of navEntries(); track entry.path) {
+        <a mat-list-item [routerLink]="entry.path" routerLinkActive="active-nav-entry">{{ entry.label }}</a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="p-6">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

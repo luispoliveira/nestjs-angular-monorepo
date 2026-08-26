@@ -139,10 +139,17 @@ export class BootstrapUtil {
     app: INestApplication,
     config: BootstrapUtilConfig,
   ) {
-    app.enableCors({
-      origin: config.cors.origin,
-      credentials: config.cors.credentials,
-    });
+    // `cors` only matches/reflects an origin when given an array (or function) —
+    // a string origin is echoed verbatim into Access-Control-Allow-Origin, so a
+    // comma-joined CORS_ORIGIN value would produce an invalid multi-origin header.
+    // Note `*` here is a LITERAL string (never matches any real origin), whereas
+    // in better-auth's `trustedOrigins` the same `*` is a WILDCARD that trusts
+    // every origin — do not "clean up" the CORS_ORIGIN filtering on that assumption.
+    const origin =
+      typeof config.cors.origin === 'string'
+        ? config.cors.origin.split(',').map((o) => o.trim())
+        : config.cors.origin;
+    app.enableCors({ origin, credentials: config.cors.credentials });
   }
 
   private static setTrustProxy(

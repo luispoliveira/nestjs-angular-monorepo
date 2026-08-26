@@ -213,28 +213,9 @@ module.exports = {
       },
     },
 
-    // -------------------------------------------------------------------------
-    // web — Next.js (App Router, standalone output), cluster-safe
-    // -------------------------------------------------------------------------
-    {
-      ...httpServiceDefaults,
-      name: 'web',
-      script: './apps/web/.next/standalone/apps/web/server.js',
-      error_file: `${LOG_DIR}/web-error.log`,
-      out_file: `${LOG_DIR}/web-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 8080,
-        HOSTNAME: '0.0.0.0',
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 8080,
-        HOSTNAME: '0.0.0.0',
-        ...loadSharedEnv('qa'),
-      },
-    },
+    // web has no PM2 process: the Angular build is a static bundle
+    // (apps/web/dist/web/browser/) served directly by nginx — see
+    // docs/deploy/nginx/frontend.conf and DEPLOY-PM2.md §9.
 
     // -------------------------------------------------------------------------
     // cron — scheduled jobs (@nestjs/schedule), health/metrics HTTP only.

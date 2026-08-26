@@ -1,0 +1,54 @@
+@if (generatedPassword(); as password) {
+  <h2 mat-dialog-title>User created</h2>
+  <mat-dialog-content>
+    <p>Copy the generated password below and share it securely. This password will not be shown again.</p>
+    <div class="flex items-center gap-2">
+      <code class="flex-1 break-all" data-testid="generated-password">{{ password }}</code>
+      <button mat-icon-button type="button" aria-label="Copy password" (click)="copyPassword()">
+        <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-flat-button type="button" (click)="close()">Done</button>
+  </mat-dialog-actions>
+} @else {
+  <h2 mat-dialog-title>Create user</h2>
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <mat-dialog-content class="flex flex-col gap-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Full name</mat-label>
+        <input matInput formControlName="name" data-testid="name-input" />
+        @if (form.controls.name.errors?.['zod']; as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" data-testid="email-input" />
+        @if (form.controls.email.errors?.['zod']; as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role" data-testid="role-input">
+          <mat-option [value]="RoleEnum.USER">User</mat-option>
+          <mat-option [value]="RoleEnum.ADMIN">Admin</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      @if (serverError(); as error) {
+        <p role="alert" data-testid="server-error">{{ error }}</p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" (click)="close()" [disabled]="createUser.isPending()">Cancel</button>
+      <button mat-flat-button type="submit" [disabled]="createUser.isPending()" data-testid="submit-button">
+        {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+      </button>
+    </mat-dialog-actions>
+  </form>
+}

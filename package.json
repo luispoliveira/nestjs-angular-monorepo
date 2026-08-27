@@ -1,5 +1,5 @@
 {
-  "name": "nestjs-nextjs-monorepo",
+  "name": "nestjs-angular-monorepo",
   "private": true,
   "version": "1.6.0",
   "scripts": {

@@ -2,13 +2,13 @@
 name: dependency-map
 description: Map all module and package dependencies in the monorepo — internal packages, NestJS module imports, and cross-service communication. Produces a dependency graph with circular dependency detection.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Map dependencies across this NestJS + Next.js monorepo. Identify internal package usage, module imports, and cross-service communication channels.
+Map dependencies across this NestJS + Angular monorepo. Identify internal package usage, module imports, and cross-service communication channels.
 
 **Do not modify anything.** This is a read-only analysis.
 
@@ -20,7 +20,7 @@ Map dependencies across this NestJS + Next.js monorepo. Identify internal packag
 
 ```bash
 # Check which apps depend on which packages
-for pkg in database shared shared-types trpc mail; do
+for pkg in database shared shared-types mail; do
   echo "=== @repo/$pkg ==="
   grep -r "\"@repo/$pkg\"" apps packages --include="package.json" -l
 done
@@ -97,7 +97,6 @@ grep -r "from '@repo/database'" packages/shared --include="*.ts"
 Check the rules from `DEPENDENCY_GRAPH.md`:
 - Apps MUST NOT import from other apps
 - `@repo/shared-types` must have zero internal dependencies
-- `@repo/trpc` is type-only (no runtime code)
 
 ---
 
@@ -108,14 +107,14 @@ Check the rules from `DEPENDENCY_GRAPH.md`:
 
 ### Internal Package Usage Matrix
 
-|                 | @repo/database | @repo/shared | @repo/shared-types | @repo/trpc | @repo/mail |
-|-----------------|:--------------:|:------------:|:------------------:|:----------:|:----------:|
-| apps/auth       | ✓              | ✓            | ✓                  |            |            |
-| apps/api        | ✓              | ✓            | ✓                  | type-only  |            |
-| apps/notifications |             | ✓            | ✓                  |            |            |
-| apps/worker     |               | ✓            |                    |            | ✓          |
-| apps/web        |               |              | ✓                  | type-only  |            |
-| @repo/shared    | ✓              |              |                    |            |            |
+|                 | @repo/database | @repo/shared | @repo/shared-types | @repo/mail |
+|-----------------|:--------------:|:------------:|:------------------:|:----------:|
+| apps/auth       | ✓              | ✓            | ✓                  |            |
+| apps/api        | ✓              | ✓            | ✓                  |            |
+| apps/notifications |             | ✓            | ✓                  |            |
+| apps/worker     |               | ✓            |                    | ✓          |
+| apps/web        |               |              | ✓                  |            |
+| @repo/shared    | ✓              |              |                    |            |
 
 ### Cross-Service Communication
 
@@ -132,7 +131,7 @@ Message flows:
 - ✓ None detected / [list cycles]
 
 ### External Dependency Concerns
-- ✓ Bull v4 used everywhere (no BullMQ) / [list violations]
+- ✓ BullMQ used everywhere (no legacy Bull v4 / `@nestjs/bull`) / [list violations]
 - ✓ Zod v4 consistent / [list mismatches]
 ```
 

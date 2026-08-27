@@ -1,4 +1,4 @@
-# CONVENTIONS.md — NestJS + Next.js Monorepo
+# CONVENTIONS.md — NestJS + Angular Monorepo
 
 Coding standards, patterns, and rules enforced across this monorepo.
 
@@ -143,12 +143,10 @@ Default job options (set in `QueueModule`):
 - Throw standard NestJS HTTP exceptions (`NotFoundException`, `BadRequestException`, etc.). Zod validation errors → 422 via `ZodValidationException`.
 - 5xx errors are automatically captured by Sentry via `AllExceptionFilter`.
 
-### tRPC
-
-- Mount with `TrpcModule.register(filePath, basePath)` from `@repo/shared/trpc`.
-- Define routers extending `BaseRouter` (auto-applies `LoggingTrpcMiddleware`) and decorating with `@Router({ alias: '...' })`.
-- `AuthTrpcMiddleware` in `apps/api` validates tokens via Redis call to `AUTH_SERVICE`.
-- The `AppRouter` type regenerates into `packages/trpc/src/` (non-production only).
+> There is no tRPC layer. `apps/api` exposes plain REST controllers only —
+> tRPC (and `packages/trpc`) was removed in the Next.js → Angular migration
+> (`openspec/changes/archive/2026-08-26-migrate-web-to-angular`). See
+> "Angular Conventions" below for how `apps/web` calls these REST endpoints.
 
 ---
 
@@ -236,7 +234,7 @@ Apps (`apps/auth`, `apps/api`, `apps/cron`, `apps/notifications`, `apps/worker`)
 
 **`collectCoverageFrom` exclusions** (common across packages):
 - `**/*.module.ts`, `**/*.spec.ts`, `**/index.ts`
-- `packages/shared` also excludes: constants, types, decorators, enums, logging, trpc, health, publisher/queue input DTOs, and the bootstrap/logger/microservice utils
+- `packages/shared` also excludes: `*.schema.ts`, constants, types, decorators, enums, logging, health, `MetricsController`, publisher/queue input DTOs, and the bootstrap/logger/microservice utils
 - `packages/database` also excludes: `**/seeders/**`
 - `packages/mail` also excludes: `**/interfaces/**`
 
@@ -355,52 +353,88 @@ E2E tests bootstrap the full `AppModule`. Mirror production bootstrap in `before
 
 File suffix: `*.e2e-spec.ts` (picked up by `jest-e2e.json`).
 
+### Angular Tests (`apps/web`)
+
+- `apps/web` does **not** use Jest. `pnpm --filter web test` runs `ng test`
+  (Angular 22's `@angular/build:unit-test`, Vitest-based).
+- No supported single-file filter — `ng test` always runs the whole suite;
+  `-- <spec-file>` is not accepted the way Jest-backed app scripts accept it.
+- The Angular CLI requires the Node version pinned in `.nvmrc`
+  (`v24.19.0`) or newer within the same `v22`/`v24`/`v26` minor floor — run
+  `nvm use` before `build`/`lint`/`test` if the shell's active Node is older.
+
 ---
 
-## Next.js Conventions
+## Angular Conventions (`apps/web`)
 
-### Server vs Client Components
+Standalone components (no `NgModule`s) + signals for local/derived state,
+Tailwind v4 for layout, Angular Material for component surfaces. No tRPC and
+no server-side rendering — `apps/web` is a static build; every backend call
+happens client-side against `apps/api`'s REST endpoints or `apps/auth`'s
+better-auth routes.
 
-- Default to server components. Add `'use client'` only when hooks, events, or browser APIs are required.
-- Auth checks and redirects belong in route-group `layout.tsx` (e.g., `(dashboard)/layout.tsx`), not middleware.
+### Data Fetching
 
-### Auth
-
-```typescript
-// Server component / server action
-import { getServerSession } from '@/lib/auth/server';
-const session = await getServerSession();
-if (!session) redirect('/sign-in');
-
-// Client component
-import { authClient } from '@/lib/auth/client';
-const { data: session } = authClient.useSession();
-await authClient.signIn.email({ email, password });
-```
-
-- `getServerSession()` hits `AUTH_API_URL/api/auth/get-session` with forwarded cookies (5 s timeout).
-- Role checks: `if (session.user.role !== RoleEnum.ADMIN) redirect('/dashboard')`.
-- `RoleEnum` is imported from `@repo/shared-types`.
-- Never write custom session or JWT logic.
-
-### tRPC Client
-
-- API tRPC client: `apiTrpc` in `lib/trpc/api.ts`, `httpBatchLink` to `/api/trpc`.
-- Auth tRPC client: `trpc` in `lib/trpc/auth.ts`, `httpBatchLink` to `/api/auth/trpc`.
-- `TrpcProvider` / `ApiTrpcProvider` are already in the root layout. Do not re-wrap.
-
-### UI
-
-- Use shadcn primitives from `components/ui/` — do not modify them in place.
-- `cn()` from `@/lib/utils` for conditional class merging (`clsx` + `tailwind-merge`).
-- `cva` for component variants.
-- Theme tokens (`bg-background`, `text-foreground`, etc.) — avoid inline `style`.
-- `generatePassword()` in `@/lib/utils` uses `crypto.getRandomValues` — prefer it over `Math.random()` for any secret/token material.
+- `@tanstack/angular-query-experimental` (`injectQuery`/`injectMutation`),
+  60 s default `staleTime`. `QueryClient` is provided once in `app.config.ts`
+  via `provideTanStackQuery(createQueryClient())`.
+- **Network-boundary parsing**: a query's `queryFn` throws on a better-auth
+  `error`, then re-`parse()`s the response through its shared Zod response
+  schema (from `@repo/shared-types`) before returning it — never trust an
+  unvalidated payload into a signal (`openspec/specs/angular-web-app` /
+  the migration's archived `design.md` → `D6`).
 
 ### Forms
 
-- React Hook Form + `@hookform/resolvers/zod`.
-- Reuse schemas from `@repo/shared-types` when the same shape is validated server-side.
+- Angular reactive forms (`FormBuilder`/`FormGroup`) validated by
+  `zodValidator(schema)` from `@repo/shared-types` — the same Zod schema the
+  backend validates with.
+- Field errors read from `control.errors?.['zod']` (a string).
+
+### Session and Auth
+
+```typescript
+// Component
+private readonly session = inject(SessionService); // signal-backed bridge over authClient.useSession
+if (!this.session.isAuthenticated()) { ... }
+
+// Guard
+export const authGuard: CanActivateFn = async () => {
+  const session = inject(SessionService);
+  await session.ready();
+  return session.isAuthenticated() ? true : inject(Router).parseUrl('/sign-in');
+};
+```
+
+- `AUTH_CLIENT` (an `InjectionToken` wrapping the vanilla `better-auth/client`)
+  is the DI seam for testing — components inject `AUTH_CLIENT`, never
+  `authClient` directly.
+- Role checks: `session.user()?.role !== RoleEnum.ADMIN` (`RoleEnum` from
+  `@repo/shared-types`).
+- Protected routes await the session's first resolution
+  (`SessionService.ready()`) before deciding — never render protected content
+  against the session atom's still-loading initial value.
+- Routing uses functional guards (`CanActivateFn`) only, never class-based guards.
+- Never write custom session or JWT logic.
+
+### Theme
+
+- `ThemeService` (signal-backed, persisted to `localStorage`) plus an inline
+  pre-bootstrap script in `index.html` that applies the stored preference
+  before Angular loads, avoiding a flash of the wrong theme.
+
+### UI
+
+- Angular Material owns component surfaces (dialogs, tables, menus, form
+  fields); Tailwind utility classes own layout. When the two conflict on a
+  Material component's own sizing, the fix goes in that component's SCSS as a
+  plain (unlayered) rule — Material's injected CSS is not wrapped in
+  Tailwind's `@layer utilities`, so an unlayered Tailwind class loses
+  regardless of specificity.
+- `MatDialog` for modals, `MatSnackBar` for toasts, `MatMenu` for action
+  menus — do not hand-roll these.
+- Icons: Material icon ligatures (`<mat-icon>name</mat-icon>`), not a
+  separate icon package.
 
 ---
 
@@ -422,7 +456,7 @@ Format: `<type>(<scope>): <imperative summary>` — ≤50 chars subject (hard ca
 | `style` | Formatting only |
 | `revert` | Revert a previous commit |
 
-Scopes: `auth`, `api`, `cron`, `notifications`, `worker`, `web`, `database`, `shared`, `shared-types`, `mail`, `trpc`, `testing-utils`, `ci`, `docker`.
+Scopes: `auth`, `api`, `cron`, `notifications`, `worker`, `web`, `database`, `shared`, `shared-types`, `mail`, `testing-utils`, `ci`, `docker`.
 
 Breaking changes: append `!` to the type+scope and add a `BREAKING CHANGE:` footer.
 
@@ -437,16 +471,16 @@ Internal packages use the `@repo/` prefix:
 ```typescript
 import { DatabaseService } from '@repo/database';
 import { SharedModule, QUEUES, SERVICES, EVENT_PATTERNS, JOB_PATTERNS } from '@repo/shared';
-import { RoleEnum, paginationSchema } from '@repo/shared-types';
-import type { AppRouter } from '@repo/trpc';
+import { RoleEnum, paginationSchema, zodValidator } from '@repo/shared-types';
 
 // Test files only:
 import { createUser, createSession, truncateDatabase, TEST_PASSWORD } from '@repo/testing-utils';
 ```
 
-Next.js uses `@/` for app-local imports:
+`apps/web` (Angular) has no `@/` path alias and no `@repo/trpc` (removed in
+the Next.js → Angular migration) — app-local imports are plain relative paths:
 
 ```typescript
-import { authClient } from '@/lib/auth/client';
-import { cn } from '@/lib/utils';
+import { AUTH_CLIENT } from '../auth/auth-client.token';
+import { SessionService } from '../auth/session.service';
 ```

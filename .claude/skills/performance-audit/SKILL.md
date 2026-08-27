@@ -2,13 +2,13 @@
 name: performance-audit
 description: Performance audit of the codebase — identifies N+1 queries, missing indexes, slow queue jobs, unoptimized data access patterns, and Redis cache opportunities. Produces a prioritized report.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Audit this NestJS + Next.js monorepo for performance issues. Focus on database access patterns, queue configuration, caching, and response size.
+Audit this NestJS + Angular monorepo for performance issues. Focus on database access patterns, queue configuration, caching, and response size.
 
 **Do not modify anything.** This is a read-only analysis.
 
@@ -97,19 +97,23 @@ grep -r "findMany({\s*where\|findFirst({\s*where\|findUnique({\s*where" apps --i
 
 Always use `select` to return only needed fields — especially on list endpoints.
 
-### 7. Next.js Performance
+### 7. Angular Performance
 
 ```bash
-# Check for client components that could be server components
-grep -r "'use client'" apps/web --include="*.tsx" -n
+# Check for components missing OnPush
+grep -rL "ChangeDetectionStrategy.OnPush" apps/web/src/app --include="*.ts" | grep -v "\.spec\.ts"
 
-# Check for missing Suspense boundaries
-grep -r "async.*export default function\|await.*fetch" apps/web/src/app --include="*.tsx" -n
+# Check for method calls in templates (recompute every change-detection cycle)
+grep -rn "{{ *this\.\|(click)=\"this\." apps/web/src/app --include="*.html"
+
+# Check for missing track in @for loops
+grep -rn "@for" apps/web/src/app --include="*.html" | grep -v "track "
 ```
 
-- Data fetching should happen in server components where possible
-- Add `loading.tsx` files for route-level Suspense boundaries
-- Check for unused client-side state management
+- Prefer `OnPush` + signals over default change detection
+- Avoid calling methods in templates — use a signal or `computed()` instead
+- Every `@for` needs a `track` expression to avoid full-list re-renders
+- Check TanStack Angular Query `staleTime` on queries that rarely change
 
 ### 8. Logging Overhead
 

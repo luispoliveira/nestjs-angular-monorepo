@@ -1,14 +1,14 @@
 ---
 name: refactor-module
-description: Safely refactor a NestJS module or Next.js component — extract abstractions, reduce duplication, improve naming, fix convention deviations. Follows the monorepo's patterns and validates the build after changes.
+description: Safely refactor a NestJS module or Angular component — extract abstractions, reduce duplication, improve naming, fix convention deviations. Follows the monorepo's patterns and validates the build after changes.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Refactor a module, service, or component in this NestJS + Next.js monorepo. Improve the code without changing behavior.
+Refactor a module, service, or component in this NestJS + Angular monorepo. Improve the code without changing behavior.
 
 **Input**: The argument after `/refactor-module` names what to refactor. Examples:
 - A module: `apps/api/src/users`
@@ -52,15 +52,16 @@ Identify:
 - Hardcoded strings for queue names, event patterns → use `@repo/shared` constants
 - `PrismaClient` injected directly → use `DatabaseService`
 - Custom JWT/Passport logic → remove, use `better-auth`
-- BullMQ imports → replace with Bull v4
+- Legacy `bull` / `@nestjs/bull` imports → replace with `@nestjs/bullmq`
 - `ZodValidationPipe` registered per-module → remove (it's global)
 - Missing `SharedModule.register()` as first import in `AppModule`
 - Zod v3 APIs (`.string().email()`) → update to v4 (`.email()`)
 
-**Next.js:**
-- `process.env` for secrets in client code → move server-side
-- `getServerSession()` in client components → move to server component
-- Large client components that could be server components
+**Angular:**
+- Components injecting `authClient` directly → inject `AUTH_CLIENT` instead (testing seam)
+- Class-based guards → convert to functional `CanActivateFn`
+- Missing `OnPush` change detection strategy
+- Forms validated ad hoc → use `zodValidator(schema)` from `@repo/shared-types`
 
 **General:**
 - Files over 500 lines → split

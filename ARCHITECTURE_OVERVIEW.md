@@ -1,4 +1,4 @@
-# ARCHITECTURE_OVERVIEW.md — NestJS + Next.js Monorepo
+# ARCHITECTURE_OVERVIEW.md — NestJS + Angular Monorepo
 
 Detailed architectural description covering service topology, module structure, async communication, and integrations.
 
@@ -14,14 +14,16 @@ See also: [PROJECT_MAP.md](PROJECT_MAP.md) | [ENTRYPOINTS.md](ENTRYPOINTS.md) | 
                     └──────┬──────┘
                            │ HTTP
                     ┌──────▼──────┐
-                    │    Nginx    │  (production reverse proxy)
-                    └──┬──────┬───┘
+                    │    Nginx    │  (prod: serves apps/web's static Angular
+                    └──┬──────┬───┘   build, proxies /api/* onward)
                        │      │
                HTTP    │      │  HTTP
           ┌────────────▼──┐ ┌─▼────────────────┐
           │  apps/api     │ │  apps/auth        │
           │  :3100/api    │ │  :3000/api/auth   │
-          │  tRPC + REST  │ │  better-auth      │
+          │  REST (own    │ │  better-auth      │
+          │  backend for  │ │                   │
+          │  apps/web)    │ │                   │
           └───────┬───────┘ └──────────┬────────┘
                   │                    │
     Redis send()  │              Redis emit()
@@ -51,6 +53,12 @@ See also: [PROJECT_MAP.md](PROJECT_MAP.md) | [ENTRYPOINTS.md](ENTRYPOINTS.md) | 
   no inbound HTTP/Redis traffic in the request path (health/metrics only).
 ```
 
+`apps/web` (Angular) never talks tRPC — that layer was removed in the Next.js →
+Angular migration (`openspec/changes/archive/2026-08-26-migrate-web-to-angular`).
+It calls `apps/api`'s own REST controllers directly and `apps/auth`'s better-auth
+HTTP routes directly (via the vanilla `better-auth/client`), both same-origin
+through Nginx's `/api/` proxy in production.
+
 ---
 
 ## Service Ports
@@ -62,11 +70,11 @@ and read via `ConfigService.getOrThrow<number>('PORT')` in `main.ts`.
 | App                  | Port   | Transport                                             |
 | --------------------- | ------ | ------------------------------------------------------ |
 | `apps/auth`          | `3000` | HTTP (`/api/auth/*`) + Redis microservice             |
-| `apps/api`           | `3100` | HTTP (`/api`, `/api/trpc/*`)                          |
+| `apps/api`           | `3100` | HTTP (`/api/*` — REST)                                |
 | `apps/cron`          | `3200` | HTTP (health/metrics/docs only) — no Redis            |
 | `apps/notifications` | `3300` | HTTP (health/metrics/docs only) + Redis microservice  |
 | `apps/worker`        | `3400` | HTTP (health/metrics/docs only) + Redis microservice  |
-| `apps/web`           | `8080` | HTTP (Next.js, dev and prod)                          |
+| `apps/web`           | `4200` (dev, `ng serve`) / `8080` (prod, Nginx) | HTTP (Angular static build in prod) |
 
 ---
 
@@ -158,7 +166,6 @@ Client (browser / other service)
     ▼
 ┌─────────────────────────────────────┐
 │  apps/api  — MicroserviceAuthGuard  │  (global APP_GUARD)
-│  apps/auth — AuthTrpcMiddleware     │  (tRPC middleware)
 └─────────────┬───────────────────────┘
               │  Redis send  MESSAGE_PATTERNS.AUTH_AUTHENTICATE
               ▼
@@ -172,6 +179,10 @@ Client (browser / other service)
               ▼
          request.user populated
 ```
+
+`apps/auth`'s own routes (`/api/auth/*`) are guarded locally by `AuthGuard`
+(`@thallesp/nestjs-better-auth`), which checks the session directly against
+its own database — no Redis round-trip for `apps/auth`'s own requests.
 
 ---
 
@@ -219,28 +230,28 @@ Client (browser / other service)
 
 ---
 
-## tRPC Architecture
+## Frontend-to-Backend Communication
 
 ```text
-apps/web (Next.js)
-  TrpcProvider (root layout)
-    └─ httpBatchLink → tRPC endpoint
-         │
-         ▼
-apps/api  (HTTP gateway, globalPrefix 'api')
-  TRPCModule.forRoot({ basePath: '/api/trpc', context: AppContext })  ← nestjs-trpc-v2
-    │  APP_GUARD: MicroserviceAuthGuard (validates session via apps/auth over Redis)
-    └─ AppRouter  (@Router)
-         @UseMiddlewares(LoggingTrpcMiddleware, AuthTrpcMiddleware)
-              └─ procedures (e.g. hello)
+apps/web (Angular)
+  injectQuery / injectMutation (@tanstack/angular-query-experimental)
+    │  queryFn calls apps/api's REST endpoints or apps/auth's better-auth
+    │  routes directly (via authClient), then re-parses the response through
+    │  the shared Zod schema from @repo/shared-types before returning it
+    ▼
+apps/api  (REST HTTP gateway, globalPrefix 'api')
+  APP_GUARD: MicroserviceAuthGuard (validates session via apps/auth over Redis)
+    └─ plain @Controller()/@Get()/@Post() routes — no tRPC layer
 
-packages/trpc
-  └─ AppRouter type (auto-generated from apps/api into src/server/api/, imported by web)
+apps/auth (better-auth HTTP routes, globalPrefix 'api')
+  APP_GUARD: AuthGuard (@thallesp/nestjs-better-auth)
+    └─ /api/auth/* — sign-in, sign-up, session, 2FA, admin
 ```
 
-> The tRPC gateway lives in `apps/api`, not `apps/auth`. The `autoSchemaFile`
-> in `apps/api/src/app.module.ts` regenerates the router type into
-> `packages/trpc/src/server/api/` outside production.
+There is no `packages/trpc` and no code generation step — REST responses are
+validated on the frontend by re-`parse()`ing them through the same Zod schema
+the backend used, not by a generated router type. See `CONVENTIONS.md` →
+Angular Conventions for the network-boundary parsing pattern.
 
 ---
 
@@ -285,6 +296,6 @@ db:generate ──► build ──► dev / test / test:cov / lint / check-types
                       └──► test:integration / test:e2e / test:watch  (cache: false — never skipped)
 ```
 
-Build caches `dist/**` and `.next/**`. Environment variables `AUTH_API_URL`, `API_URL`, `BACKEND_HOST`, `BACKEND_PROTOCOL` are declared as Turbo `env` inputs for the `build` task (cache-busting).
+`build` depends on `db:generate` and `^build`, caches `dist/**` (includes `apps/web`'s Angular build output), and takes `.env*` as additional cache-busting inputs.
 
 `test` and `test:cov` run across all workspaces (apps + `packages/shared`, `packages/mail`, `packages/database`). `test:integration` and `test:e2e` depend on `^build`, are never cached, and apply only to apps that have the corresponding jest configs. Run `pnpm test:db:setup` once before executing integration or E2E tasks to ensure the `nestjs_test` database exists and is migrated.

@@ -2,7 +2,7 @@
 name: commit
 description: Gate-checked git commits for this monorepo — runs build, lint, check-types and unit tests before drafting a Conventional Commits message, then waits for explicit user approval before committing. Supports splitting one verified diff into several commits without re-running checks.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
@@ -70,7 +70,7 @@ Follow [.github/git-commit-instructions.md](../../../.github/git-commit-instruct
 ```
 
 - Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`, `ci`, `style`, `revert`.
-- Scope = touched app/package name (`auth`, `web`, `api`, `database`, `shared`, `shared-types`, `mail`, `trpc`, `worker`, `notifications`, `ci`, `docker`) — omit if the change spans several.
+- Scope = touched app/package name (`auth`, `web`, `api`, `database`, `shared`, `shared-types`, `mail`, `worker`, `notifications`, `ci`, `docker`) — omit if the change spans several.
 - Subject ≤50 chars (hard cap 72), imperative mood, lowercase after the colon, no trailing period.
 - Body only when the subject doesn't explain the *why*.
 - Breaking change → `type(scope)!:` + `BREAKING CHANGE:` footer.

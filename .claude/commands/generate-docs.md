@@ -5,12 +5,12 @@ category: Documentation
 tags: [docs, documentation, generate, update]
 ---
 
-Generate or update documentation for this NestJS + Next.js monorepo.
+Generate or update documentation for this NestJS + Angular monorepo.
 
 **Input**: Optional — specify which document(s) to update. Default: all.
 - `PROJECT_MAP` — directory inventory
 - `ARCHITECTURE_OVERVIEW` — service topology and flows
-- `ENTRYPOINTS` — all HTTP, tRPC, event, and job entry points
+- `ENTRYPOINTS` — all HTTP, event, and job entry points
 - `CONVENTIONS` — coding standards
 - `DEPENDENCY_GRAPH` — package and module dependency map
 

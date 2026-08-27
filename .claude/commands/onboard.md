@@ -5,7 +5,7 @@ category: Onboarding
 tags: [onboarding, new-developer, tutorial, walkthrough]
 ---
 
-Welcome to this NestJS + Next.js monorepo. Let's get you oriented.
+Welcome to this NestJS + Angular monorepo. Let's get you oriented.
 
 **Input**: Optional context — e.g., `backend`, `frontend`, `fullstack`, or a specific focus like `auth system`.
 
@@ -14,10 +14,10 @@ Welcome to this NestJS + Next.js monorepo. Let's get you oriented.
 1. **Project Overview** (5 min) — service topology, apps vs packages, communication patterns
 2. **Environment Setup** (10 min) — prerequisites, install, docker, migrate, dev start
 3. **Key Concepts** (15 min) — SharedModule, constants, auth flow, validation
-4. **Your First Feature** (20 min) — Prisma model → DTO → service → tRPC/REST → Next.js
+4. **Your First Feature** (20 min) — Prisma model → DTO → service → REST → Angular
 5. **Development Workflow** — dev, lint, types, build, OpenSpec for structured changes
 
-Ask upfront about experience level (NestJS, Next.js, monorepo) to tailor the depth of each section.
+Ask upfront about experience level (NestJS, Angular, monorepo) to tailor the depth of each section.
 
 ## Quick Reference
 

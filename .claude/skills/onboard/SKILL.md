@@ -2,13 +2,13 @@
 name: onboard
 description: Guided onboarding for new developers joining this monorepo. Walks through architecture, key concepts, development workflow, and a first task. Tailored to the developer's experience level.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Welcome a new developer to this NestJS + Next.js monorepo. Guide them through the architecture, conventions, and development workflow.
+Welcome a new developer to this NestJS + Angular monorepo. Guide them through the architecture, conventions, and development workflow.
 
 **This is a guided tour, not a task executor.** Read files, explain concepts, answer questions.
 
@@ -17,7 +17,7 @@ Welcome a new developer to this NestJS + Next.js monorepo. Guide them through th
 ## Preflight
 
 Before starting, ask:
-- "Are you new to NestJS, Next.js, or the monorepo pattern? Or all three?"
+- "Are you new to NestJS, Angular, or the monorepo pattern? Or all three?"
 - "Are you focused on backend, frontend, or full-stack work?"
 
 This tailors the depth of each section.
@@ -31,17 +31,16 @@ This is a Turborepo + pnpm monorepo template with:
 
   apps/
   ├── auth/          NestJS — authentication (better-auth)
-  ├── api/           NestJS — tRPC API gateway
+  ├── api/           NestJS — REST API gateway
   ├── notifications/ NestJS — email event bridge
   ├── worker/        NestJS — email job processor (Bull)
-  └── web/           Next.js — admin dashboard
+  └── web/           Angular — admin dashboard
 
 packages/
   ├── database/      Prisma ORM + DatabaseService
   ├── shared/        Global NestJS infra (guards, filters, utils)
   ├── shared-types/  Zod schemas shared across frontend + backend
-  ├── mail/          Brevo email provider
-  └── trpc/          AppRouter type (auto-generated)
+  └── mail/          Brevo email provider
 ```
 
 Key insight: **all backend apps are separate processes** communicating via Redis (events/messages) and Bull (jobs). They share code through internal packages.
@@ -152,13 +151,14 @@ async getUsers(dto: GetUsersDto) {
 }
 ```
 
-**Step 5**: Expose via tRPC or REST:
-- tRPC: add a procedure to a `@Router` class
-- REST: add a `@Get()` to a `@Controller`
+**Step 5**: Expose via REST — add a `@Get()` to a `@Controller`
 
-**Step 6**: Consume in Next.js (if tRPC):
+**Step 6**: Consume in Angular via TanStack Angular Query:
 ```typescript
-const { data } = trpc.users.getUsers.useQuery({ skip: 0, take: 20 });
+const usersQuery = injectQuery(() => ({
+  queryKey: ['users', { skip: 0, take: 20 }],
+  queryFn: () => api.getUsers({ skip: 0, take: 20 }),
+}));
 ```
 
 ---

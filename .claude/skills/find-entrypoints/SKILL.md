@@ -2,13 +2,13 @@
 name: find-entrypoints
 description: Find and list all system entry points — HTTP routes, microservice patterns, queue jobs, health endpoints, and CLI commands. Produces a complete inventory with file references.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Discover all entry points in this NestJS + Next.js monorepo. Produce a complete, navigable inventory.
+Discover all entry points in this NestJS + Angular monorepo. Produce a complete, navigable inventory.
 
 **Do not modify anything.** This is a read-only discovery skill.
 
@@ -42,23 +42,7 @@ The auth app mounts all better-auth routes at `/api/auth/*`. Enumerate:
 grep -r "betterAuth\|plugins\|socialProviders" apps/auth --include="*.ts" -n
 ```
 
-### 3. tRPC Procedures
-
-```bash
-# Find router definitions
-grep -r "@Router\|procedure\.\(query\|mutation\)" apps packages --include="*.ts" -n
-
-# Find the app router composition
-find apps -name "app.router.ts" | xargs cat
-```
-
-For each procedure:
-- Name and type (query/mutation)
-- Input schema
-- Auth requirement
-- Service called
-
-### 4. Microservice Patterns
+### 3. Microservice Patterns
 
 ```bash
 # Message patterns (request/response)
@@ -73,7 +57,7 @@ Cross-reference with constants:
 cat packages/shared/src/constants/events.ts
 ```
 
-### 5. Queue Jobs
+### 4. Queue Jobs
 
 ```bash
 # Processors
@@ -85,7 +69,7 @@ Cross-reference with:
 cat packages/shared/src/constants/jobs.ts
 ```
 
-### 6. Health Endpoints
+### 5. Health Endpoints
 
 Provided globally by `SharedModule` via `HealthController`:
 - `GET /health/live` — always returns 200 if process is running
@@ -95,20 +79,19 @@ Provided globally by `SharedModule` via `HealthController`:
 find packages/shared/src -name "health.controller.ts" | xargs cat
 ```
 
-### 7. Next.js Routes
+### 6. Angular Routes
 
 ```bash
-# App Router pages
-find apps/web/src/app -name "page.tsx" -o -name "route.ts" | sort
+# Route table
+cat apps/web/src/app/app.routes.ts
 
-# API routes
-find apps/web/src/app -name "route.ts" | sort
+# Lazy-loaded feature components
+find apps/web/src/app/features -maxdepth 1 -type d | sort
 ```
 
-For each page, note:
-- Path derived from file system
-- Protected (layout-level auth check)?
-- Server or client component?
+For each route, note:
+- Path and lazy-loaded component
+- Guard applied (`authGuard`, `guestGuard`, `adminGuard`)?
 
 ---
 
@@ -126,11 +109,11 @@ For each page, note:
 | GET | /api/auth/health/ready | Public | shared/health.controller.ts |
 | GET | /api/auth/docs | Public (non-prod) | main.ts (Swagger) |
 
-### tRPC — apps/api (port 3002, prefix: /api/trpc)
+### HTTP — apps/api (REST gateway)
 
-| Procedure | Type | Auth | File |
-|-----------|------|------|------|
-| users.getUsers | query | Required | apps/api/src/... |
+| Method | Path | Auth | File |
+|--------|------|------|------|
+| GET | /api/users | Required | apps/api/src/... |
 
 ### Microservice — Redis
 
@@ -145,13 +128,13 @@ For each page, note:
 |-----|---------|------|
 | job:send_welcome_email | EmailConsumer.sendWelcomeEmail | apps/worker/src/consumer/email.consumer.ts |
 
-### Next.js Pages — apps/web (port 3000)
+### Angular Routes — apps/web (dev port 4200)
 
-| Path | Auth | Type | File |
-|------|------|------|------|
-| / | Redirect | Server | apps/web/src/app/page.tsx |
-| /sign-in | Public | Server | apps/web/src/app/sign-in/page.tsx |
-| /dashboard | Protected | Server | apps/web/src/app/(dashboard)/page.tsx |
+| Path | Guard | Component | File |
+|------|-------|-----------|------|
+| / | — (redirect) | — | apps/web/src/app/app.routes.ts |
+| /sign-in | guestGuard | SignIn | apps/web/src/app/features/sign-in/sign-in.ts |
+| /dashboard | authGuard | Dashboard | apps/web/src/app/features/dashboard/dashboard.ts |
 ```
 
 ---

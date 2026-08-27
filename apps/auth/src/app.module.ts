@@ -42,6 +42,25 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
             baseURL:
               configService.get<string>('BETTER_AUTH_URL') ||
               'http://localhost:3000/api/auth',
+            trustedOrigins: configService
+              .getOrThrow<string>('CORS_ORIGIN')
+              .split(',')
+              .filter((origin) => origin !== '*'),
+            advanced: {
+              // better-auth silently skips origin validation whenever
+              // NODE_ENV=test (its own isTest() heuristic), unless this is
+              // set explicitly — pin it so origin/CSRF checks are exercised
+              // by tests and can never vanish from a misconfigured NODE_ENV.
+              disableOriginCheck: false,
+              ...(configService.get<string>('COOKIE_DOMAIN')
+                ? {
+                    crossSubDomainCookies: {
+                      enabled: true,
+                      domain: configService.getOrThrow<string>('COOKIE_DOMAIN'),
+                    },
+                  }
+                : {}),
+            },
             ...(googleClientId &&
               googleClientSecret && {
                 socialProviders: {
@@ -54,6 +73,13 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
             database: prismaAdapter(database, {
               provider: 'postgresql',
             }),
+            user: {
+              // Reuses `emailVerification.sendVerificationEmail` below to
+              // deliver the confirmation link — better-auth falls back to it
+              // when `sendChangeEmailConfirmation` isn't set (confirmed
+              // against better-auth's own `api/routes/update-user.mjs`).
+              changeEmail: { enabled: true },
+            },
             emailAndPassword: {
               enabled: true,
               requireEmailVerification: true,
@@ -123,9 +149,6 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
                 return Promise.resolve();
               },
             },
-            trustedOrigins: configService.get<string>('UI_URL')
-              ? [configService.get<string>('UI_URL')!]
-              : ['http://localhost:8080', 'http://localhost:8090'],
             hooks: {},
             databaseHooks: {
               user: {

@@ -85,7 +85,7 @@ pnpm build
 
 O build corre para todos os packages e apps via Turborepo. Os artefactos ficam em `apps/*/dist/`.
 
-O Next.js gera o output standalone em `apps/web/.next/`.
+O Angular gera um bundle estático em `apps/web/dist/web/browser/`, servido diretamente pelo Nginx (secção 9) — não há processo Node para `web` no PM2, ao contrário das apps NestJS. Editar `apps/web/src/environments/environment.prod.ts` com o `authApiUrl` real **antes** deste `pnpm build`.
 
 ---
 
@@ -119,14 +119,14 @@ REDIS_PASSWORD=<REDIS_PASS>
 MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
 
 BETTER_AUTH_SECRET=<gerar com openssl rand -base64 32>
-BETTER_AUTH_URL=https://<dominio>/api/auth
+BETTER_AUTH_URL=https://<dominio-auth>/api/auth
 
-UI_URL=https://<dominio>
+UI_URL=https://<dominio-frontend>
 
 ADMIN_EMAIL=admin@<empresa>.com
 ADMIN_PASSWORD=<password forte>
 
-CORS_ORIGIN=https://<dominio>
+CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<gerar com openssl rand -base64 32>
 
@@ -152,15 +152,15 @@ REDIS_PASSWORD=<REDIS_PASS>
 MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
 
 BETTER_AUTH_SECRET=<mesmo valor que apps/auth>
-BETTER_AUTH_URL=https://<dominio>/api/auth
+BETTER_AUTH_URL=https://<dominio-auth>/api/auth
 
-CORS_ORIGIN=https://<dominio>
+CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
 UPLISTING_URL=https://connect.uplisting.io
 
-PUBLIC_API_URL=https://<dominio>
+PUBLIC_API_URL=https://<dominio-frontend>
 ```
 
 ---
@@ -179,7 +179,7 @@ REDIS_PASSWORD=<REDIS_PASS>
 
 MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
 
-CORS_ORIGIN=https://<dominio>
+CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 ```
@@ -200,39 +200,30 @@ REDIS_PASSWORD=<REDIS_PASS>
 
 MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
 
-CORS_ORIGIN=https://<dominio>
+CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
 UPLISTING_URL=https://connect.uplisting.io
 
 BREVO_API_KEY=<API key do Brevo>
-FROM_EMAIL=noreply@<dominio>
+FROM_EMAIL=noreply@<dominio-frontend>
 FROM_NAME=TX Home
 DEV_EMAIL=
 ```
 
 ---
 
-### `apps/web/.env`
+### `apps/web` — sem `.env` (config compilado no build)
 
-```dotenv
-NODE_ENV=production
-
-# URLs internas — usadas pelos rewrites do next.config.ts (server-side)
-AUTH_API_URL=http://127.0.0.1:3000
-API_URL=http://127.0.0.1:3100
-
-# URL pública — exposta ao browser
-NEXT_PUBLIC_AUTH_API_URL=https://<dominio>
-NEXT_PUBLIC_API_URL=https://<dominio>
-
-BACKEND_PROTOCOL=https
-BACKEND_HOST=<dominio>
-
-# Opcional — CDN para imagens
-NEXT_PUBLIC_STORAGE_URL=
+```typescript
+// apps/web/src/environments/environment.prod.ts — editar antes de `pnpm build`
+export const environment = {
+  authApiUrl: 'https://<dominio-auth>',
+};
 ```
+
+A API própria do frontend é sempre o prefixo relativo `/api`, servido same-origin pelo nginx (§9) — nunca um host configurado aqui.
 
 ---
 
@@ -249,8 +240,9 @@ apps/auth/.env.production          apps/auth/.env.qa
 apps/api/.env.production           apps/api/.env.qa
 apps/notifications/.env.production apps/notifications/.env.qa
 apps/worker/.env.production        apps/worker/.env.qa
-apps/web/.env.production           apps/web/.env.qa
 ```
+
+`web` não tem `.env` em runtime — a configuração é compilada no build (ver §3/§4 acima e `apps/web/src/environments/environment.prod.ts`).
 
 ### Criar pasta de logs
 
@@ -348,73 +340,26 @@ pm2 flush
 
 ---
 
-## 9. Configurar Nginx como Reverse Proxy
+## 9. Configurar Nginx (dois subdomínios)
 
 ```bash
 sudo apt install nginx
 ```
 
-Criar `/etc/nginx/sites-available/tx-home`:
-
-```nginx
-server {
-    listen 80;
-    server_name <dominio>;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name <dominio>;
-
-    ssl_certificate     /etc/ssl/certs/<dominio>.crt;
-    ssl_certificate_key /etc/ssl/private/<dominio>.key;
-
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    # Frontend (Next.js)
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Auth API
-    location /api/auth/ {
-        proxy_pass http://127.0.0.1:3000/api/auth/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # API (tRPC + REST)
-    location /api/ {
-        proxy_pass http://127.0.0.1:3100/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+`web` e `auth` vivem em subdomínios irmãos que partilham o domínio pai, para que o cookie de sessão possa ser partilhado entre ambos (SSO). Usar os server blocks prontos em [docs/deploy/nginx/](docs/deploy/nginx/) — `frontend.conf` serve o build estático de `apps/web/dist/web/browser/` diretamente do filesystem e faz proxy same-origin de `/api/` para `api`; `auth.conf` faz proxy de `/api/auth/` para `auth`:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/tx-home /etc/nginx/sites-enabled/
+sudo cp docs/deploy/nginx/frontend.conf /etc/nginx/sites-available/frontend
+sudo cp docs/deploy/nginx/auth.conf     /etc/nginx/sites-available/auth
+# substituir <dominio-frontend>, <dominio-auth> e <root-path> (ex: /opt/tx-home/apps/web/dist/web/browser)
+sudo ln -s /etc/nginx/sites-available/frontend /etc/nginx/sites-enabled/frontend
+sudo ln -s /etc/nginx/sites-available/auth     /etc/nginx/sites-enabled/auth
 sudo nginx -t
 sudo systemctl reload nginx
+sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```
 
-> O `notifications` (3300) e o `worker` (3400) **não devem ser expostos** — comunicam apenas internamente via Redis. Todas as apps partilham o mesmo prefixo `/api`; a distinção é feita pela porta.
+> O `notifications` (3300) e o `worker` (3400) **não devem ser expostos** — comunicam apenas internamente via Redis. Todas as apps NestJS partilham o mesmo prefixo `/api`; a distinção entre elas é feita pela porta.
 
 ---
 
@@ -449,10 +394,11 @@ pm2 reload all
 - [ ] `apps/api/.env` criado e preenchido
 - [ ] `apps/notifications/.env` criado e preenchido
 - [ ] `apps/worker/.env` criado e preenchido
-- [ ] `apps/web/.env` criado e preenchido
+- [ ] `apps/web/src/environments/environment.prod.ts` com `authApiUrl` apontado para `<dominio-auth>`
 - [ ] `BETTER_AUTH_SECRET` igual em `auth` e `api`
 - [ ] `ENCRYPTION_KEY` igual em `auth`, `api`, `notifications` e `worker`
-- [ ] `CORS_ORIGIN` sem `*`, apenas o domínio de produção
+- [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
+- [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `PUBLIC_API_URL` definida em `apps/api`
 - [ ] `UI_URL` definida em `apps/auth`
 - [ ] `BREVO_API_KEY` válida em `apps/worker`
@@ -463,5 +409,5 @@ pm2 reload all
 - [ ] `pm2-logrotate` instalado e configurado
 - [ ] `pm2 start ecosystem.config.js --env production` executado
 - [ ] `pm2 startup` + `pm2 save` configurados
-- [ ] Nginx configurado e a servir HTTPS
-- [ ] Portas 3000, 3100, 3200, 3300, 3400 **não expostas** diretamente ao exterior (apenas 80/443 via Nginx; `8080` é a porta pública do `web`)
+- [ ] Nginx configurado e a servir HTTPS em `<dominio-frontend>` e `<dominio-auth>`
+- [ ] Portas 3000, 3100, 3200, 3300, 3400 **não expostas** diretamente ao exterior (apenas 80/443 via Nginx)

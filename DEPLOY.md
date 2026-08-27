@@ -6,14 +6,17 @@ Este guia cobre o deploy completo da plataforma num servidor Linux usando Docker
 
 ## Visão Geral da Arquitetura
 
+Topologia de dois subdomínios (SSO entre `web` e `auth` via cookie partilhado no domínio pai — ver `docs/deploy/nginx/frontend.conf` e `auth.conf`):
+
 ```
 [Internet]
     │
-[Reverse Proxy — Traefik / Nginx]
+    ├── <dominio-frontend> ─ Nginx (web, porta 8080 dentro do container)
+    │       ├── /          → estáticos Angular (build da imagem web)
+    │       └── /api/      → api (NestJS, porta 3100) — same-origin
     │
-    ├── /               → web  (Next.js, porta 8080)
-    ├── /api/auth/*     → auth (NestJS, porta 3000)
-    └── /api/...        → api  (NestJS, porta 3100)
+    └── <dominio-auth> ───── Nginx → auth (NestJS, porta 3000)
+            └── /api/auth/ → auth
 
 [Apps internas — não expostas pelo reverse proxy]
     ├── cron          (NestJS, porta 3200)
@@ -116,11 +119,12 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `REDIS_PASSWORD`       | `<REDIS_PASS>`                                                        | ⚠️ opcional | Definir se Redis tiver auth ativada                                  |
 | `MONGO_URI`            | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          | Host `mongo` = nome do serviço Docker                                |
 | `BETTER_AUTH_SECRET`   | `<gerar com openssl rand -base64 32>`                                 | ✅          | **Mínimo 32 caracteres. Igual em todos os serviços.**                |
-| `BETTER_AUTH_URL`      | `https://<dominio>/api/auth`                                          | ✅          | URL pública completa do endpoint de auth                             |
-| `UI_URL`               | `https://<dominio>`                                                   | ✅          | URL do frontend — usado para links de email (reset password, verify) |
+| `BETTER_AUTH_URL`      | `https://<dominio-auth>/api/auth`                                     | ✅          | URL pública **https** do endpoint de auth — o prefixo `Secure` do cookie deriva disto, nunca dos headers do proxy |
+| `UI_URL`               | `https://<dominio-frontend>`                                          | ✅          | URL do frontend — usado para links de email (reset password, verify) |
 | `ADMIN_EMAIL`          | `admin@<empresa>.com`                                                 | ✅          | Email do utilizador administrador inicial (criado no seed)           |
 | `ADMIN_PASSWORD`       | **password segura**                                                   | ✅          | Password do admin — mín. 12 chars, maiúsculas, números, símbolos     |
-| `CORS_ORIGIN`          | `https://<dominio>`                                                   | ✅          | Sem `*` em produção. Separar múltiplos com vírgula.                  |
+| `CORS_ORIGIN`          | `https://<dominio-frontend>`                                          | ✅          | Origem(ns) do browser — sem `*` em produção (entrada removida se presente). Separar múltiplos com vírgula. |
+| `COOKIE_DOMAIN`        | `.<dominio-pai>`                                                      | ⚠️ opcional | Domínio pai partilhado por `<dominio-frontend>` e `<dominio-auth>` — ativa SSO entre os dois. Omitir para cookie host-only (sem SSO). |
 | `ENCRYPTION_KEY`       | `<gerar com openssl rand -base64 32>`                                 | ✅          | **Igual em todos os serviços. Mínimo 32 caracteres.**                |
 | `GOOGLE_CLIENT_ID`     | `<id do Google Cloud>`                                                | ⚠️ opcional | Apenas se usar login com Google                                      |
 | `GOOGLE_CLIENT_SECRET` | `<secret do Google Cloud>`                                            | ⚠️ opcional | Apenas se usar login com Google                                      |
@@ -139,11 +143,11 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `REDIS_PASSWORD`     | `<REDIS_PASS>`                                                        | ⚠️ opcional |                                                                                                                 |
 | `MONGO_URI`          | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |                                                                                                                 |
 | `BETTER_AUTH_SECRET` | `<mesmo valor que apps/auth>`                                         | ✅          | **Tem de ser igual ao da app auth**                                                                             |
-| `BETTER_AUTH_URL`    | `https://<dominio>/api/auth`                                          | ✅          |                                                                                                                 |
-| `CORS_ORIGIN`        | `https://<dominio>`                                                   | ✅          |                                                                                                                 |
+| `BETTER_AUTH_URL`    | `https://<dominio-auth>/api/auth`                                     | ✅          |                                                                                                                 |
+| `CORS_ORIGIN`        | `https://<dominio-frontend>`                                          | ✅          |                                                                                                                 |
 | `ENCRYPTION_KEY`     | `<mesmo valor que apps/auth>`                                         | ✅          | **Tem de ser igual em todos os serviços**                                                                       |
 | `UPLISTING_URL`      | `https://connect.uplisting.io`                                        | ✅          | URL base da API Uplisting — não alterar                                                                         |
-| `PUBLIC_API_URL`     | `https://<dominio>`                                                   | ✅          | URL pública da API — usada para construir URLs de webhooks. **A app falha ao iniciar se não estiver definida.** |
+| `PUBLIC_API_URL`     | `https://<dominio-frontend>`                                          | ✅          | URL pública da API — usada para construir URLs de webhooks. **A app falha ao iniciar se não estiver definida.** |
 
 ---
 
@@ -158,7 +162,7 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `REDIS_PORT`     | `6379`                                                                | ✅          |       |
 | `REDIS_PASSWORD` | `<REDIS_PASS>`                                                        | ⚠️ opcional |       |
 | `MONGO_URI`      | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |       |
-| `CORS_ORIGIN`    | `https://<dominio>`                                                   | ✅          |       |
+| `CORS_ORIGIN`    | `https://<dominio-frontend>`                                          | ✅          |       |
 | `ENCRYPTION_KEY` | `<mesmo valor que apps/auth>`                                         | ✅          |       |
 
 ---
@@ -174,29 +178,27 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `REDIS_PORT`     | `6379`                                                                | ✅          |                                                           |
 | `REDIS_PASSWORD` | `<REDIS_PASS>`                                                        | ⚠️ opcional |                                                           |
 | `MONGO_URI`      | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |                                                           |
-| `CORS_ORIGIN`    | `https://<dominio>`                                                   | ✅          |                                                           |
+| `CORS_ORIGIN`    | `https://<dominio-frontend>`                                          | ✅          |                                                           |
 | `ENCRYPTION_KEY` | `<mesmo valor que apps/auth>`                                         | ✅          |                                                           |
 | `UPLISTING_URL`  | `https://connect.uplisting.io`                                        | ✅          |                                                           |
 | `BREVO_API_KEY`  | `<API key do Brevo>`                                                  | ✅          | Obter em app.brevo.com → API Keys                         |
-| `FROM_EMAIL`     | `noreply@<dominio>`                                                   | ✅          | Endereço de email remetente                               |
+| `FROM_EMAIL`     | `noreply@<dominio-frontend>`                                                   | ✅          | Endereço de email remetente                               |
 | `FROM_NAME`      | `TX Home`                                                             | ✅          | Nome do remetente nos emails                              |
 | `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Em produção pode ficar em branco ou igual ao `FROM_EMAIL` |
 
 ---
 
-### `apps/web/.env` (porta 8080)
+### `apps/web` (porta 8080 dentro do container — sem `.env` em runtime)
 
-| Variável                   | Valor de Produção           | Obrigatório | Notas                                                                                    |
-| -------------------------- | --------------------------- | ----------- | ---------------------------------------------------------------------------------------- |
-| `AUTH_API_URL`             | `http://auth:3000`          | ✅          | URL **interna** (container-to-container) do serviço auth                                 |
-| `API_URL`                  | `http://api:3100`           | ✅          | URL **interna** do serviço api — usada para rewrite de `/api/trpc/*`                     |
-| `NEXT_PUBLIC_AUTH_API_URL` | `https://<dominio>`         | ✅          | URL **pública** do auth — exposta ao browser (prefixo `NEXT_PUBLIC_`)                    |
-| `NEXT_PUBLIC_API_URL`      | `https://<dominio>`         | ⚠️ opcional | URL pública do API — usada para construir URLs de imagens no cliente                     |
-| `NEXT_PUBLIC_STORAGE_URL`  | `https://storage.<dominio>` | ⚠️ opcional | Se usar CDN/storage externo para imagens; caso contrário o `NEXT_PUBLIC_API_URL` é usado |
-| `BACKEND_PROTOCOL`         | `https`                     | ✅          |                                                                                          |
-| `BACKEND_HOST`             | `<dominio>`                 | ✅          |                                                                                          |
+O Angular não lê variáveis de ambiente em runtime — a configuração é compilada no **build**, via `apps/web/src/environments/environment.prod.ts` (trocado por `angular.json`'s `fileReplacements` na build `production`):
 
-> **Nota**: `AUTH_API_URL` e `API_URL` são usadas nos rewrites do `next.config.ts` — devem ser os hostnames internos Docker. `NEXT_PUBLIC_*` são expostas ao browser e devem ser URLs públicas HTTPS.
+```typescript
+export const environment = {
+  authApiUrl: 'https://<dominio-auth>', // origem pública do auth — ver DEPLOY-PM2.md §9 / docs/deploy/nginx/
+};
+```
+
+A API própria do frontend é sempre o prefixo relativo `/api` (proxied same-origin pelo nginx — ver `docs/deploy/nginx/frontend.conf`), nunca um host configurado. Editar `environment.prod.ts` com o domínio real de `auth` **antes** de `pnpm --filter web build` (ou de construir a imagem Docker, que corre o mesmo build).
 
 ---
 
@@ -312,11 +314,11 @@ docker compose up -d auth api notifications worker web
 ### 6.5 Verificar saúde dos serviços
 
 ```bash
-# Health checks (públicos, via reverse proxy)
-curl https://<dominio>/api/auth/health/ready
-curl https://<dominio>/api/health/ready
+# Health check público (via reverse proxy) — só a api viaja pelo domínio frontend
+curl https://<dominio-frontend>/api/health/ready
 
-# Health checks internos (não expostos publicamente)
+# Health checks internos (não expostos publicamente, incluindo auth)
+curl http://localhost:3000/api/health/ready   # auth
 curl http://localhost:3200/api/health/ready   # cron
 curl http://localhost:3300/api/health/ready   # notifications
 curl http://localhost:3400/api/health/ready   # worker
@@ -328,51 +330,27 @@ docker compose logs -f api
 
 ---
 
-## 7. Reverse Proxy (Traefik / Nginx)
+## 7. Reverse Proxy (Nginx, dois subdomínios)
 
-O `docker-compose.yaml` já tem configuração Traefik comentada como referência. Em alternativa, usar Nginx:
+`web` e `auth` vivem em subdomínios irmãos que partilham o domínio pai, para que o cookie de sessão possa ser partilhado entre ambos (SSO). Usar os server blocks prontos em [docs/deploy/nginx/](docs/deploy/nginx/):
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name <dominio>;
+- [`frontend.conf`](docs/deploy/nginx/frontend.conf) — serve os estáticos do `web` (proxied até ao container na porta `8080`, ou diretamente do filesystem, conforme a instalação) e faz proxy same-origin de `/api/` para `api` (porta 3100)
+- [`auth.conf`](docs/deploy/nginx/auth.conf) — faz proxy de `/api/auth/` para `auth` (porta 3000)
 
-    # TLS (Let's Encrypt / certificado próprio)
-    ssl_certificate     /etc/ssl/certs/<dominio>.crt;
-    ssl_certificate_key /etc/ssl/private/<dominio>.key;
-
-    # Frontend
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Auth API
-    location /api/auth/ {
-        proxy_pass http://localhost:3000/api/auth/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # API (tRPC + REST)
-    location /api/ {
-        proxy_pass http://localhost:3100/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```bash
+sudo cp docs/deploy/nginx/frontend.conf /etc/nginx/sites-available/frontend
+sudo cp docs/deploy/nginx/auth.conf     /etc/nginx/sites-available/auth
+# substituir <dominio-frontend> / <dominio-auth> / <root-path> em cada ficheiro
+sudo ln -s /etc/nginx/sites-available/frontend /etc/nginx/sites-enabled/frontend
+sudo ln -s /etc/nginx/sites-available/auth     /etc/nginx/sites-enabled/auth
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```
+
+Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `CORS_ORIGIN=https://<dominio-frontend>`, `COOKIE_DOMAIN=.<dominio-pai>` (ver `apps/auth/.env.example`). O prefixo `Secure` do cookie deriva de `BETTER_AUTH_URL` começar por `https://` — nunca dos headers do proxy.
 
 > Os serviços `cron` (porta 3200), `notifications` (porta 3300) e `worker` (porta 3400)
 > **não devem ser expostos publicamente** — comunicam apenas via Redis/BullMQ internamente.
-> Todas as apps partilham o mesmo prefixo `/api`; a distinção é feita pela porta.
 
 ---
 
@@ -380,7 +358,7 @@ server {
 
 - **Nunca expor** PostgreSQL (5432), Redis (6379) ou MongoDB (27017) à internet — ficam na rede interna Docker.
 - **Redis com password**: Configurar `requirepass` no Redis e definir `REDIS_PASSWORD` em todos os serviços.
-- **`CORS_ORIGIN`**: Nunca usar `*` em produção. Usar o domínio exato: `https://<dominio>`.
+- **`CORS_ORIGIN`**: Nunca usar `*` em produção. Usar o domínio exato de cada origem: `https://<dominio-frontend>` / `https://<dominio-auth>`.
 - **`BETTER_AUTH_SECRET`** e **`ENCRYPTION_KEY`**: Mínimo 32 caracteres, gerados com `openssl rand -base64 32`. Guardar num gestor de secrets (Vault, AWS Secrets Manager, etc.).
 - **Swagger/OpenAPI**: Está desativado automaticamente quando `NODE_ENV=production`.
 - **`ADMIN_PASSWORD`**: Usar uma password forte e alterar no primeiro login.
@@ -396,12 +374,13 @@ server {
 - [ ] `apps/api/.env` criado e preenchido
 - [ ] `apps/notifications/.env` criado e preenchido
 - [ ] `apps/worker/.env` criado e preenchido
-- [ ] `apps/web/.env` criado e preenchido
+- [ ] `apps/web/src/environments/environment.prod.ts` com `authApiUrl` apontado para `<dominio-auth>`
 - [ ] `BETTER_AUTH_SECRET` igual em `auth` e `api`
 - [ ] `ENCRYPTION_KEY` igual em `auth`, `api`, `notifications` e `worker`
 - [ ] `DATABASE_URL` aponta para host Docker interno (`postgres`) em todos os serviços
 - [ ] `REDIS_HOST` é `redis` (nome do serviço Docker) em todos os serviços
-- [ ] `CORS_ORIGIN` sem `*`, apenas o domínio de produção
+- [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
+- [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `PUBLIC_API_URL` definida em `apps/api` com URL pública HTTPS
 - [ ] `UI_URL` definida em `apps/auth` com URL pública HTTPS do frontend
 - [ ] `BREVO_API_KEY` válida em `apps/worker`

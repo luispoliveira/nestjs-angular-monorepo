@@ -104,4 +104,30 @@ export class LocalAuthService implements OnModuleInit {
       email: session.user.email,
     });
   }
+
+  /**
+   * Unlike the self-service hooks above, the session on this request is the
+   * *admin's*, not the target user's — better-auth's `/admin/set-user-password`
+   * takes the target `userId` in the request body (confirmed against
+   * better-auth's own `admin/routes.mjs`), so the affected user is looked up
+   * directly instead of via `getSession`.
+   */
+  @nestjsBetterAuth.AfterHook('/admin/set-user-password')
+  async handleAdminSetPassword(ctx: nestjsBetterAuth.AuthHookContext) {
+    const { userId } = ctx.body as { userId: string; newPassword: string };
+
+    const user = await this.databaseService.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    this.notificationsPublisher.emitUserPasswordChanged({
+      userId: user.id,
+      email: user.email,
+      reason: 'Password set by an administrator',
+    });
+  }
 }

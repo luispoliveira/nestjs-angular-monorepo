@@ -1,0 +1,85 @@
+<div class="flex flex-col gap-6">
+  <div class="flex items-center gap-4">
+    <span class="account-avatar">{{ initials() }}</span>
+    <div>
+      <h1 class="text-xl font-semibold">{{ currentUser()?.name || currentUser()?.email }}</h1>
+      <p class="text-sm text-gray-500">Manage your profile details and password.</p>
+    </div>
+  </div>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Profile</mat-card-title>
+      <mat-card-subtitle>Your name and email address</mat-card-subtitle>
+    </mat-card-header>
+    <form [formGroup]="profileForm" (ngSubmit)="onSubmitProfile()">
+      <mat-card-content class="flex flex-col gap-2">
+        <mat-form-field appearance="outline">
+          <mat-label>Full name</mat-label>
+          <input matInput formControlName="name" data-testid="name-input" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" data-testid="email-input" />
+        </mat-form-field>
+
+        @if (profileError(); as error) {
+          <p role="alert" data-testid="profile-error">{{ error }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button type="button" [disabled]="updateProfile.isPending()" (click)="cancelProfile()">
+          Cancel
+        </button>
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="updateProfile.isPending()"
+          data-testid="save-profile-button"
+        >
+          {{ updateProfile.isPending() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </mat-card-actions>
+    </form>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Change password</mat-card-title>
+      <mat-card-subtitle>Use a strong, unique password. Other sessions will be signed out.</mat-card-subtitle>
+    </mat-card-header>
+    <form [formGroup]="passwordForm" (ngSubmit)="onSubmitPassword()">
+      <mat-card-content class="flex flex-col gap-2">
+        <mat-form-field appearance="outline">
+          <mat-label>Current password</mat-label>
+          <input matInput type="password" formControlName="currentPassword" data-testid="current-password-input" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>New password</mat-label>
+          <input matInput type="password" formControlName="newPassword" data-testid="new-password-input" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Confirm new password</mat-label>
+          <input matInput type="password" formControlName="confirmPassword" data-testid="confirm-password-input" />
+        </mat-form-field>
+
+        @if (passwordError(); as error) {
+          <p role="alert" data-testid="password-error">{{ error }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="changePassword.isPending()"
+          data-testid="change-password-button"
+        >
+          {{ changePassword.isPending() ? 'Updating…' : 'Update password' }}
+        </button>
+      </mat-card-actions>
+    </form>
+  </mat-card>
+</div>

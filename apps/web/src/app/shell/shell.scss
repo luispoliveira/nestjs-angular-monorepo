@@ -1,0 +1,45 @@
+// Material's own component CSS is not layered, so it beats Tailwind's
+// @layer-utilities width classes in the cascade regardless of selector
+// specificity — sizing a Material component's own layout goes here instead
+// (design.md → D4: Material owns component surfaces, Tailwind owns layout).
+:host {
+  display: block;
+  height: 100vh;
+}
+
+mat-sidenav {
+  width: 240px;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+mat-sidenav-content {
+  background: var(--mat-sys-surface-container-lowest);
+}
+
+.nav-group-label {
+  padding: 16px 16px 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.active-nav-entry {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  border-radius: 999px;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 0.75rem;
+  font-weight: 600;
+}

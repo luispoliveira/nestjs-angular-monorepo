@@ -219,4 +219,41 @@ describe('LocalAuthService', () => {
       ).rejects.toThrow('Session not found');
     });
   });
+
+  // ===========================================================================
+  // handleAdminSetPassword() Tests
+  // ===========================================================================
+
+  describe('handleAdminSetPassword()', () => {
+    it('should emit emitUserPasswordChanged for the target user, not the admin', async () => {
+      const targetUser = { id: 'user-1', email: 'user@example.com' };
+      databaseService.user.findUnique.mockResolvedValue(targetUser);
+
+      await service.handleAdminSetPassword({
+        body: { userId: 'user-1', newPassword: 'new-password' },
+      } as never);
+
+      expect(databaseService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
+      expect(
+        notificationsPublisher.emitUserPasswordChanged,
+      ).toHaveBeenCalledWith({
+        userId: targetUser.id,
+        email: targetUser.email,
+        reason: 'Password set by an administrator',
+      });
+      expect(authService.api.getSession).not.toHaveBeenCalled();
+    });
+
+    it('should throw when the target user is not found', async () => {
+      databaseService.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.handleAdminSetPassword({
+          body: { userId: 'missing', newPassword: 'new-password' },
+        } as never),
+      ).rejects.toThrow('User not found');
+    });
+  });
 });

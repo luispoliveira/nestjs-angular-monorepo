@@ -6,14 +6,7 @@
     "build": {
       "dependsOn": ["db:generate", "^build", "^db:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": [
-        "AUTH_API_URL",
-        "API_URL",
-        "BACKEND_HOST",
-        "BACKEND_PROTOCOL",
-        "NEXT_PUBLIC_BASE_PATH"
-      ]
+      "outputs": ["dist/**"]
     },
     "dev": {
       "dependsOn": ["^build"],

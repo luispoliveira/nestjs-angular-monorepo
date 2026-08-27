@@ -9,6 +9,6 @@
   "exports": {
     "./base": "./base.json",
     "./nestjs": "./nestjs.json",
-    "./nextjs": "./nextjs.json"
+    "./angular-app": "./angular-app.json"
   }
 }

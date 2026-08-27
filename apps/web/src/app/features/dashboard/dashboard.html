@@ -1,0 +1,30 @@
+<div class="flex flex-col gap-6">
+  <div>
+    <h1 class="text-xl font-semibold">Dashboard</h1>
+    <p class="text-sm text-gray-500">Overview of users and activity.</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    @for (stat of stats; track stat.label) {
+      <mat-card class="stat-card">
+        <mat-card-content class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">{{ stat.label }}</p>
+            @if (stat.query.isPending()) {
+              <mat-spinner diameter="24" data-testid="stat-loading" />
+            } @else if (stat.query.isError()) {
+              <p class="text-sm" data-testid="stat-error" role="alert">
+                {{ stat.query.error().message }}
+              </p>
+            } @else {
+              <p class="text-2xl font-bold" data-testid="stat-value">{{ stat.query.data() }}</p>
+            }
+          </div>
+          <span class="stat-icon">
+            <mat-icon>{{ stat.icon }}</mat-icon>
+          </span>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+</div>

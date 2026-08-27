@@ -1,0 +1,23 @@
+<h2 mat-dialog-title>Edit role</h2>
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="flex flex-col gap-2">
+    <p>Change the role for <strong>{{ data.user.name || data.user.email }}</strong>.</p>
+    <mat-form-field appearance="outline">
+      <mat-label>Role</mat-label>
+      <mat-select formControlName="role" data-testid="role-select">
+        <mat-option [value]="RoleEnum.USER">User</mat-option>
+        <mat-option [value]="RoleEnum.ADMIN">Admin</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    @if (serverError(); as error) {
+      <p role="alert" data-testid="server-error">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()" [disabled]="setRole.isPending()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="setRole.isPending()" data-testid="submit-button">
+      {{ setRole.isPending() ? 'Saving…' : 'Save' }}
+    </button>
+  </mat-dialog-actions>
+</form>

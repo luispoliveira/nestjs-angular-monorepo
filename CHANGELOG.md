@@ -1,3 +1,13 @@
+## v1.6.0 (2026-08-27)
+
+## What's Changed
+* Bump version to 1.5.0 by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/21
+* Migrate frontend from Next.js to Angular by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/23
+* Bump version to 1.6.0 by @luispoliveira in https://github.com/luispoliveira/nestjs-nextjs-monorepo/pull/25
+
+
+**Full Changelog**: https://github.com/luispoliveira/nestjs-nextjs-monorepo/compare/v1.5.0...v1.6.0
+
 ## v1.5.0 (2026-08-25)
 
 ## What's Changed

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DateToISOString, NullableDateToISOString } from './date.schema';
+import { DateToISOString, NullableDateToISOString } from './date.schema.js';
 
 export const baseEntitySchema = z.object({
   id: z.number().int().positive(),

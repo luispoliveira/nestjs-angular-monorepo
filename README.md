@@ -1,6 +1,6 @@
-# NestJS + Next.js Monorepo Template
+# NestJS + Angular Monorepo Template
 
-A production-ready, full-stack monorepo template combining NestJS microservices with a Next.js admin dashboard. Built on modern tooling with end-to-end type safety, async job processing, and a complete authentication system.
+A production-ready, full-stack monorepo template combining NestJS microservices with an Angular admin dashboard. Built on modern tooling with a shared Zod validation contract, async job processing, and a complete authentication system.
 
 ## Stack
 
@@ -8,13 +8,13 @@ A production-ready, full-stack monorepo template combining NestJS microservices 
 | ----------------- | --------------------------------------------------- |
 | Monorepo          | Turborepo + pnpm workspaces                         |
 | Backend           | NestJS 11 (TypeScript)                              |
-| Frontend          | Next.js 16 (App Router), Tailwind CSS v4, shadcn/ui |
+| Frontend          | Angular 22 (standalone, signals), Tailwind CSS v4, Angular Material |
 | Database          | PostgreSQL via Prisma 7 (PrismaPg adapter)          |
 | Logging/Audit     | MongoDB via Mongoose (30-day TTL)                   |
 | Cache / Transport | Redis                                               |
 | Auth              | `better-auth` + `@thallesp/nestjs-better-auth`      |
 | Validation        | Zod v4 + `nestjs-zod`                               |
-| API Contract      | tRPC via `nestjs-trpc-v2`                           |
+| API Contract      | REST (`apps/api`), same-origin from the frontend    |
 | Queue             | BullMQ via `@nestjs/bullmq`                         |
 | Email             | Brevo (via `@getbrevo/brevo`)                       |
 | Logging           | `nestjs-pino` with correlation IDs via `nestjs-cls` |
@@ -26,16 +26,15 @@ A production-ready, full-stack monorepo template combining NestJS microservices 
 ```
 apps/
   auth/           # NestJS — Auth service (HTTP + Redis microservice)
-  api/            # NestJS — tRPC HTTP gateway (mounts TRPCModule at /api/trpc)
+  api/            # NestJS — REST HTTP gateway for the frontend's own backend
   cron/           # NestJS — Scheduled jobs (@nestjs/schedule), health/metrics HTTP only
   notifications/  # NestJS — Notification microservice (Redis events → BullMQ jobs)
   worker/         # NestJS — BullMQ worker (processes email jobs via Brevo)
-  web/            # Next.js — Admin backoffice dashboard (App Router)
+  web/            # Angular — Admin backoffice dashboard (standalone components, signals)
 packages/
   database/       # Prisma client, DatabaseModule, DatabaseService, migrations, seeders
   shared/         # Global NestJS infrastructure (SharedModule, guards, interceptors, publishers, queue, health, metrics)
-  shared-types/   # Zod v4 schemas shared between frontend and backend
-  trpc/           # AppRouter types exported from the auth and api apps
+  shared-types/   # Zod v4 schemas + zodValidator() shared between frontend and backend
   mail/           # MailModule (Brevo provider, MongoDB email logging)
   testing-utils/  # Test factories, DB truncation, testcontainers e2e setup
   eslint-config/  # Shared ESLint configurations
@@ -111,15 +110,15 @@ pnpm dev
 | ----------------------- | ---------------------------- |
 | Auth API                | <http://localhost:3000>      |
 | Auth API Docs (Swagger) | <http://localhost:3000/docs> |
-| API (tRPC gateway)      | <http://localhost:3100>      |
+| API                     | <http://localhost:3100>      |
 | Cron                    | <http://localhost:3200>      |
 | Notifications           | <http://localhost:3300>      |
 | Worker                  | <http://localhost:3400>      |
-| Web (backoffice)        | <http://localhost:8080>      |
+| Web (backoffice, `ng serve`) | <http://localhost:4200> |
 | Prometheus              | <http://localhost:9090>      |
 | Grafana                 | <http://localhost:3333>      |
 
-Every NestJS app shares the same `globalPrefix: 'api'` — they are told apart by **port**, not by path.
+Every NestJS app shares the same `globalPrefix: 'api'` — they are told apart by **port**, not by path. In development, `apps/web` reaches `apps/auth` cross-origin (`http://localhost:3000`, per `authApiUrl` in `apps/web/src/environments/environment.ts`) — the same cross-origin path deployed environments use — and its own `apps/api` same-origin under `/api/` via `apps/web/proxy.conf.json`. In production, `apps/web` is a static build served by nginx, not a running dev server — see [nginx / split-subdomain topology](#docker--production) below.
 
 ## Commands
 
@@ -213,8 +212,8 @@ pnpm test -- --testNamePattern="should return"
 Services communicate via **Redis transport** using predefined constants from `@repo/shared`:
 
 ```
-[web (Next.js)]  →  tRPC (auth) / better-auth cookies  →  [auth]
-[web (Next.js)]  →  tRPC (api)                         →  [api]
+[web (Angular)]  →  better-auth client, cross-origin   →  [auth]
+[web (Angular)]  →  REST, same-origin /api/             →  [api]
 [auth]           →  Redis EventPattern                 →  [notifications]
 [notifications]  →  BullMQ Queue (email-queue)         →  [worker]
 [worker]         →  Brevo API                          →  Email delivery
@@ -226,9 +225,9 @@ The `auth` service also exposes a `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` RPC endpo
 ### Authentication Flow
 
 1. User authenticates via `/api/auth/*` (better-auth HTTP handlers)
-2. Session cookie is set by better-auth
-3. `proxy.ts` (Next.js 16) validates the session server-side; unauthenticated requests are redirected to `/sign-in`
-4. tRPC procedures and server components call `getServerSession()` for auth context
+2. Session cookie is set by better-auth — `Secure`-prefixed, `SameSite=Lax`, scoped to the shared parent domain in production for SSO across sibling subdomains
+3. A functional Angular route guard (`authGuard`) awaits the session's first resolution and redirects to `/sign-in` if unauthenticated — enforced client-side, since the frontend is a static bundle with no server of its own
+4. Components call REST endpoints through the injected `AUTH_CLIENT` (the vanilla `better-auth/client`) for auth context, and `apps/api` directly for the frontend's own data
 
 ### Email Notification Pipeline
 
@@ -255,8 +254,8 @@ BETTER_AUTH_URL=http://localhost:3000/api/auth
 REDIS_HOST=localhost
 REDIS_PORT=6379
 MONGO_URI=mongodb://nestjs:change-me@localhost:27017/nestjs?authSource=admin
-CORS_ORIGIN=http://localhost:8080
-UI_URL=http://localhost:8080
+CORS_ORIGIN=http://localhost:3000,http://localhost:4200
+UI_URL=http://localhost:4200
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=change-me
 METRICS_TOKEN=
@@ -319,15 +318,23 @@ METRICS_TOKEN=
 SENTRY_DSN=
 ```
 
-### `apps/web/.env`
+### `apps/web`
 
-```env
-AUTH_API_URL=http://localhost:3000
-API_URL=http://localhost:3100
-NEXT_PUBLIC_AUTH_API_URL=http://localhost:3000
-BACKEND_PROTOCOL=http
-BACKEND_HOST=localhost
+Angular has no runtime `.env` — configuration is baked in at **build time** via `apps/web/src/environments/{environment.ts,environment.prod.ts}`, swapped by `angular.json`'s `production` `fileReplacements` (see the `nginx-subdomain-topology` capability in the archived `migrate-web-to-angular` openspec change for the full rationale):
+
+```typescript
+// environment.ts (development — used by `ng serve` / a dev build)
+export const environment = {
+  authApiUrl: 'http://localhost:3000', // cross-origin, same as deployed environments
+};
+
+// environment.prod.ts (production — set the real public auth origin before building)
+export const environment = {
+  authApiUrl: 'https://auth.example.com',
+};
 ```
+
+The frontend's own API is always the relative `/api` prefix, proxied same-origin (`apps/web/proxy.conf.json` in dev, nginx in production) — never a configured host.
 
 `METRICS_TOKEN` and `SENTRY_DSN` are optional on every NestJS app — leave them empty to disable auth on the metrics endpoint / disable Sentry.
 
@@ -391,15 +398,6 @@ import {
 } from '@repo/shared-types';
 ```
 
-### `@repo/trpc`
-
-`AppRouter` type definitions auto-generated by `nestjs-trpc-v2`, one per gateway — auth procedures from the `auth` app, application procedures from the `api` app. Import on the frontend for full type safety:
-
-```typescript
-import type { AppRouter } from '@repo/trpc/auth';
-import type { AppRouter } from '@repo/trpc/api';
-```
-
 ### `@repo/mail`
 
 Email delivery via Brevo. Configure with `MailModule.forRootAsync()`. Logs all sent emails to MongoDB (`EmailLog`) with a 30-day TTL.
@@ -413,13 +411,13 @@ Email delivery via Brevo. Configure with `MailModule.forRootAsync()`. Logs all s
 - Extend `BasePublisher` for Redis event publishers, `BaseProducer` for BullMQ queue producers
 - Use `@Public()` to bypass auth, `@CurrentUser()` to inject the current user in controllers
 
-### Next.js
+### Angular
 
-- Default to **server components**; add `'use client'` only when required
-- All API calls go through tRPC — never raw `fetch`
-- Auth in server components: `getServerSession()`
-- Auth in client components: `authClient` from `lib/auth/client.ts`
-- UI primitives from `components/ui/` (shadcn/ui)
+- Standalone components only — no `NgModule`s; bootstrap via `bootstrapApplication`
+- Data fetching through `@tanstack/angular-query-experimental` (`injectQuery`/`injectMutation`) — never a hand-rolled `HttpClient` call
+- Forms validated by `zodValidator(schema)` from `@repo/shared-types` — the same schema the backend validates with
+- Auth: inject the `AUTH_CLIENT` token (never the `authClient` singleton directly) and `SessionService` for the signal-backed session
+- UI primitives from Angular Material — do not hand-roll dialogs, menus, or tables
 
 ### Database
 
@@ -460,7 +458,9 @@ All NestJS apps expose:
 
 ## Docker / Production
 
-The `docker-compose.yaml` includes fully configured (but commented-out) app service definitions with Traefik routing labels, ready to uncomment for deployment. Each app has a `Dockerfile` using a multi-stage build.
+The `docker-compose.yaml` includes fully configured (but commented-out) app service definitions with Traefik routing labels, ready to uncomment for deployment. Each app has a `Dockerfile` using a multi-stage build — `apps/web`'s build stage compiles the Angular app and its production stage is a static nginx image (`apps/web/nginx.conf.template`).
+
+`apps/web` and `apps/auth` are deployed on separate sibling subdomains sharing a registrable parent domain, so the session cookie can be widened for single sign-on across them — see [DEPLOY.md](DEPLOY.md) / [DEPLOY-PM2.md](DEPLOY-PM2.md) and the nginx server blocks in [docs/deploy/nginx/](docs/deploy/nginx/) (`frontend.conf`, `auth.conf`).
 
 ## License
 

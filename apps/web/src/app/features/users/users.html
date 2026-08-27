@@ -1,0 +1,149 @@
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Users</h1>
+    <button mat-flat-button type="button" (click)="openCreateUserDialog()" data-testid="new-user-button">
+      New user
+    </button>
+  </div>
+
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <mat-form-field appearance="outline" class="sm:w-64">
+      <mat-label>Search by email</mat-label>
+      <input matInput [formControl]="searchControl" data-testid="search-input" />
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-40">
+      <mat-label>Role</mat-label>
+      <mat-select
+        [value]="roleFilter()"
+        (selectionChange)="setRoleFilter($event.value)"
+        data-testid="role-filter"
+      >
+        <mat-option value="all">All roles</mat-option>
+        <mat-option [value]="RoleEnum.ADMIN">Admin</mat-option>
+        <mat-option [value]="RoleEnum.USER">User</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-40">
+      <mat-label>Status</mat-label>
+      <mat-select
+        [value]="statusFilter()"
+        (selectionChange)="setStatusFilter($event.value)"
+        data-testid="status-filter"
+      >
+        <mat-option value="all">All statuses</mat-option>
+        <mat-option value="active">Active</mat-option>
+        <mat-option value="banned">Banned</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (usersQuery.isPending()) {
+    <mat-spinner diameter="32" data-testid="users-loading" />
+  } @else if (usersQuery.isError()) {
+    <p role="alert" data-testid="users-error">{{ usersQuery.error().message }}</p>
+  } @else {
+    <mat-card class="overflow-hidden">
+      <table mat-table [dataSource]="users()" class="w-full">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Role</th>
+          <td mat-cell *matCellDef="let user">{{ user.role ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let user" [attr.data-testid]="'status-' + user.id">
+            @if (user.banned) {
+              <span>Banned</span>
+              @if (user.banReason) {
+                <span class="text-sm text-gray-500"> — {{ user.banReason }}</span>
+              }
+              @if (user.banExpires) {
+                <span class="text-sm text-gray-500"> (until {{ user.banExpires | date: 'mediumDate' }})</span>
+              }
+            } @else {
+              <span>Active</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Created</th>
+          <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'mediumDate' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let user">
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'Open actions menu for ' + user.email"
+              [matMenuTriggerFor]="menu"
+              [attr.data-testid]="'actions-menu-' + user.id"
+            >
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <a mat-menu-item [routerLink]="['/users', user.id]" data-testid="view-details-action">View details</a>
+              <button mat-menu-item type="button" (click)="openEditRoleDialog(user)">Edit role</button>
+              @if (user.banned) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  [disabled]="user.id === currentUserId()"
+                  (click)="unban(user)"
+                  data-testid="unban-action"
+                >
+                  Unban user
+                </button>
+              } @else {
+                <button
+                  mat-menu-item
+                  type="button"
+                  [disabled]="user.id === currentUserId()"
+                  (click)="ban(user)"
+                  data-testid="ban-action"
+                >
+                  Ban user
+                </button>
+              }
+              <button
+                mat-menu-item
+                type="button"
+                [disabled]="user.id === currentUserId()"
+                (click)="delete(user)"
+                data-testid="delete-action"
+              >
+                Delete
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" [attr.data-testid]="'user-row-' + row.id"></tr>
+      </table>
+
+      <mat-paginator
+        [length]="total()"
+        [pageSize]="pageSize"
+        [pageIndex]="page()"
+        [hidePageSize]="true"
+        (page)="onPage($event)"
+      />
+    </mat-card>
+  }
+</div>

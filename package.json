@@ -15,6 +15,7 @@
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e",
     "test:db:setup": "node scripts/test-db-setup.mjs",
+    "verify:zod-version": "node scripts/verify-single-zod-version.mjs",
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:seed": "turbo db:seed",
@@ -29,6 +30,6 @@
   },
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.3"
   }
 }

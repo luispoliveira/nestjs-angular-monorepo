@@ -1,0 +1,27 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="mx-auto flex max-w-sm flex-col gap-4 p-6">
+  <h1 class="text-xl font-semibold">Sign in</h1>
+
+  <mat-form-field>
+    <mat-label>Email</mat-label>
+    <input matInput type="email" formControlName="email" autocomplete="email" />
+    @if (form.controls.email.errors?.['zod']; as message) {
+      <mat-error>{{ message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Password</mat-label>
+    <input matInput type="password" formControlName="password" autocomplete="current-password" />
+    @if (form.controls.password.errors?.['zod']; as message) {
+      <mat-error>{{ message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (serverError(); as message) {
+    <p class="text-sm text-red-600" role="alert">{{ message }}</p>
+  }
+
+  <button mat-raised-button color="primary" type="submit" [disabled]="submitting()">
+    {{ submitting() ? 'Signing in…' : 'Sign in' }}
+  </button>
+</form>

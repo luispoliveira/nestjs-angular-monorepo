@@ -1,0 +1,47 @@
+# Container-internal server block (design.md → D1) — TLS is terminated by
+# whatever fronts this container (host-level nginx, load balancer), so this
+# listens on plain HTTP only. `${API_UPSTREAM}` is substituted by the
+# official nginx image's docker-entrypoint templating at container start
+# (envsubst on files under /etc/nginx/templates/).
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 127.0.0.11 is Docker's embedded DNS. Resolving via a variable (rather
+    # than a literal proxy_pass target) defers DNS lookup to request time
+    # instead of config-load time, so this container starts even if
+    # API_UPSTREAM's host isn't resolvable yet (startup-order races, or
+    # running this image standalone outside its compose network) — it 502s
+    # on a request until the upstream becomes reachable, rather than
+    # crashing nginx outright.
+    resolver 127.0.0.11 valid=30s;
+    set $api_upstream ${API_UPSTREAM};
+
+    # Same-origin API proxy — more specific than the SPA fallback below, so
+    # it must be declared first for nginx's longest-prefix location match.
+    location /api/ {
+        proxy_pass $api_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # A request for a known static-asset extension either serves that exact
+    # file or 404s — it must NOT fall back to index.html, or a genuinely
+    # missing asset (e.g. a stale hashed chunk after a deploy) would
+    # silently return the app shell with a 200 instead of failing loudly.
+    location ~* \.(?:js|css|map|ico|png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|json|txt)$ {
+        try_files $uri =404;
+    }
+
+    # SPA history fallback — anything else (a client-side route with no
+    # matching static file) resolves to index.html so the Angular router
+    # can render it, on both direct navigation and reload.
+    location / {
+        try_files $uri /index.html;
+    }
+}

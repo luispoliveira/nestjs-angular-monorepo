@@ -1,0 +1,70 @@
+@if (isImpersonating()) {
+  <div class="flex items-center justify-between bg-amber-500 px-4 py-2 text-black" data-testid="impersonation-banner">
+    <span>Viewing as {{ impersonatedUserLabel() }}</span>
+    <button mat-stroked-button type="button" (click)="stopImpersonating()" data-testid="stop-impersonating-button">
+      Stop impersonating
+    </button>
+  </div>
+}
+
+<mat-toolbar color="primary" class="flex items-center justify-between gap-2">
+  <div class="flex items-center gap-2">
+    <mat-icon>hub</mat-icon>
+    <span class="text-lg font-semibold">Admin Dashboard</span>
+  </div>
+
+  <div class="flex items-center gap-1">
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="theme.mode() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      (click)="theme.toggle()"
+    >
+      <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+
+    <button
+      mat-button
+      type="button"
+      class="flex items-center gap-2"
+      [matMenuTriggerFor]="userMenu"
+      data-testid="user-menu-button"
+    >
+      <span class="user-avatar">{{ userInitials() }}</span>
+      @if (userName(); as name) {
+        <span class="hidden sm:inline" data-testid="user-name">{{ name }}</span>
+      }
+      <mat-icon>expand_more</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <a mat-menu-item routerLink="/account" data-testid="my-account-link">
+        <mat-icon>person</mat-icon>
+        <span>My account</span>
+      </a>
+      <button mat-menu-item type="button" (click)="signOut()" data-testid="sign-out-button">
+        <mat-icon>logout</mat-icon>
+        <span>Sign out</span>
+      </button>
+    </mat-menu>
+  </div>
+</mat-toolbar>
+
+<mat-sidenav-container class="h-[calc(100%-64px)]">
+  <mat-sidenav mode="side" opened>
+    <mat-nav-list>
+      @for (group of navGroups(); track group.label) {
+        <div class="nav-group-label">{{ group.label }}</div>
+        @for (entry of group.entries; track entry.path) {
+          <a mat-list-item [routerLink]="entry.path" routerLinkActive="active-nav-entry">
+            <mat-icon matListItemIcon>{{ entry.icon }}</mat-icon>
+            <span matListItemTitle>{{ entry.label }}</span>
+          </a>
+        }
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="p-6">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

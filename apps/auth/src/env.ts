@@ -10,6 +10,7 @@ export const authEnvSchema = baseEnvSchema.extend({
   CORS_ORIGIN: z.string().min(1),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  COOKIE_DOMAIN: z.string().optional(),
 });
 
 export type AuthEnv = z.infer<typeof authEnvSchema>;

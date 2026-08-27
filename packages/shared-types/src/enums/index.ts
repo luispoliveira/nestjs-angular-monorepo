@@ -1,2 +1,2 @@
-export * from './environment.enum';
-export * from './role.enum';
+export * from './environment.enum.js';
+export * from './role.enum.js';

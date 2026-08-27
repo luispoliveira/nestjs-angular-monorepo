@@ -1,0 +1,39 @@
+.detail-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.chip-success {
+  // The theme's primary palette is spring-green (styles.scss), so "primary"
+  // doubles as the success color here — Angular Material's M3 tokens have
+  // no dedicated success role.
+  --mat-chip-label-text-color: var(--mat-sys-on-primary-container);
+  background-color: var(--mat-sys-primary-container);
+}
+
+.chip-danger {
+  --mat-chip-label-text-color: var(--mat-sys-on-error-container);
+  background-color: var(--mat-sys-error-container);
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  &:first-child {
+    border-top: none;
+  }
+}

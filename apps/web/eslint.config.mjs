@@ -1,4 +1,32 @@
-import { nextJsConfig } from '@repo/eslint-config/next-js';
+// @ts-check
+import { angularConfig } from '@repo/eslint-config/angular';
+import { defineConfig } from 'eslint/config';
 
-/** @type {import("eslint").Linter.Config[]} */
-export default nextJsConfig;
+export default defineConfig([
+  {
+    files: ['**/*.ts'],
+    extends: [...angularConfig.ts],
+    rules: {
+      '@angular-eslint/directive-selector': [
+        'error',
+        {
+          type: 'attribute',
+          prefix: 'app',
+          style: 'camelCase',
+        },
+      ],
+      '@angular-eslint/component-selector': [
+        'error',
+        {
+          type: 'element',
+          prefix: 'app',
+          style: 'kebab-case',
+        },
+      ],
+    },
+  },
+  {
+    files: ['**/*.html'],
+    extends: [...angularConfig.html],
+  },
+]);

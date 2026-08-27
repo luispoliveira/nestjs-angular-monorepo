@@ -2,13 +2,13 @@
 name: tdd
 description: Test-driven development guide for this monorepo — write tests before implementation, following the project's testing stack (Jest, nestjs testing utilities). Covers unit, integration, and e2e test patterns.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Apply test-driven development in this NestJS + Next.js monorepo. Write tests first, then implement the minimum code to make them pass.
+Apply test-driven development in this NestJS + Angular monorepo. Write tests first, then implement the minimum code to make them pass.
 
 **Input**: The argument after `/tdd` describes what to implement. Examples:
 - `users.getUser — returns user by ID, throws 404 if not found`

@@ -2,13 +2,13 @@
 name: review-security
 description: Security audit of the codebase — checks authentication, authorization, input validation, secret handling, injection risks, and OWASP Top 10 concerns. Produces a prioritized findings report.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Perform a security audit of this NestJS + Next.js monorepo. Identify vulnerabilities, misconfigurations, and deviations from security best practices.
+Perform a security audit of this NestJS + Angular monorepo. Identify vulnerabilities, misconfigurations, and deviations from security best practices.
 
 **Do not exploit or modify anything.** This is a read-only security analysis.
 
@@ -115,7 +115,7 @@ grep -r "throw new Error\|throw Error" apps --include="*.ts" -n | grep -v "test\
 ### 8. Dependencies
 
 - [ ] No known vulnerable packages?
-- [ ] No BullMQ imported (only Bull v4)?
+- [ ] No legacy `bull` / `@nestjs/bull` imported (only BullMQ)?
 - [ ] Auth-related packages from trusted sources?
 
 ```bash
@@ -123,15 +123,16 @@ grep -r "bullmq" apps packages --include="*.ts" -l
 grep -r "passport\|jwt" package.json apps/*/package.json packages/*/package.json 2>/dev/null
 ```
 
-### 9. Next.js Specific
+### 9. Angular Specific
 
-- [ ] No secrets in client-side code (no `NEXT_PUBLIC_*` for secrets)?
-- [ ] `getServerSession()` used for server-side auth (not client-side)?
-- [ ] No `dangerouslySetInnerHTML` without sanitization?
+- [ ] No secrets in `environment.ts`/`environment.prod.ts` (they ship to the browser)?
+- [ ] Route guards await `session.ready()` before deciding — never render protected content against a still-loading session?
+- [ ] Components inject `AUTH_CLIENT`, never the vanilla `authClient` directly?
+- [ ] No `[innerHTML]`/`bypassSecurityTrustHtml` on unsanitized user content?
 
 ```bash
-grep -r "NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*TOKEN" apps/web -n
-grep -r "dangerouslySetInnerHTML" apps/web --include="*.tsx" -n
+grep -rE "SECRET|KEY|TOKEN" apps/web/src/environments -n
+grep -r "bypassSecurityTrustHtml\|bypassSecurityTrustResourceUrl" apps/web/src --include="*.ts" -n
 ```
 
 ### 10. MongoDB Security

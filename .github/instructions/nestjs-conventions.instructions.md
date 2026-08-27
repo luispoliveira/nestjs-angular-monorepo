@@ -121,16 +121,16 @@ export class MyPublisher extends BasePublisher {
 
 Use the pre-built `NotificationsPublisher` from `@repo/shared/publishers` instead of building a custom one when emitting to the notifications service.
 
-## Queue — Bull v4 (`@nestjs/bull`)
+## Queue — BullMQ (`@nestjs/bullmq`)
 
-> **Important**: This project uses `@nestjs/bull` (Bull v4), **not** BullMQ. Do not install or import from `bullmq`.
+> **Important**: This project uses `@nestjs/bullmq` (BullMQ). Do not install or import from legacy `bull` / `@nestjs/bull`.
 
 ### Registering Queues
 
 ```typescript
 import { QueueModule, QUEUES } from '@repo/shared';
 
-// In feature module:
+// In feature module — registers the main queue and its DLQ (`email-queue-dlq`) automatically:
 QueueModule.registerQueues([QUEUES.EMAIL]);
 ```
 
@@ -140,8 +140,8 @@ Extend `BaseProducer` from `@repo/shared/abstracts`. The base class handles corr
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { ClsService } from 'nestjs-cls';
 import { BaseProducer, QUEUES, JOB_PATTERNS } from '@repo/shared';
 
@@ -161,17 +161,35 @@ Use the pre-built `EmailProducer` from `@repo/shared/queue` instead of building 
 
 ### Job Consumers (Workers)
 
+`@Processor(QUEUES.*)` extends `WorkerHost` with a single `process(job)` method that dispatches on `job.name` via `switch`. DLQ routing happens in `@OnWorkerEvent('failed')`: once `job.attemptsMade >= maxAttempts`, forward it to the DLQ queue.
+
 ```typescript
-import { Process, Processor } from '@nestjs/bull';
-import { Job } from 'bull';
-import { QUEUES, JOB_PATTERNS } from '@repo/shared';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
+import { QUEUES, JOB_PATTERNS, SentryUtil } from '@repo/shared';
 
 @Processor(QUEUES.EMAIL)
-export class EmailConsumer {
-  @Process(JOB_PATTERNS.SEND_WELCOME_EMAIL)
-  async handleWelcomeEmail(job: Job<SendWelcomeEmailInput>): Promise<void> {
-    const { data } = job;
-    // process job...
+export class EmailConsumer extends WorkerHost {
+  constructor(@InjectQueue(QUEUES.EMAIL_DLQ) private readonly dlqQueue: Queue) {
+    super();
+  }
+
+  async process(job: Job): Promise<void> {
+    switch (job.name) {
+      case JOB_PATTERNS.SEND_WELCOME_EMAIL:
+        return this.sendWelcomeEmail(job as Job<SendWelcomeEmailInput>);
+      // ...other JOB_PATTERNS
+    }
+  }
+
+  @OnWorkerEvent('failed')
+  onFailed(job: Job, error: Error): void {
+    SentryUtil.captureException(error, { extra: { jobId: job.id, jobName: job.name } });
+
+    const maxAttempts = job.opts.attempts ?? 1;
+    if (job.attemptsMade >= maxAttempts) {
+      void this.dlqQueue.add(job.name, job.data, { removeOnComplete: true });
+    }
   }
 }
 ```

@@ -2,13 +2,13 @@
 name: generate-docs
 description: Generate or update project documentation — PROJECT_MAP.md, ARCHITECTURE_OVERVIEW.md, ENTRYPOINTS.md, CONVENTIONS.md, DEPENDENCY_GRAPH.md. Scans the codebase and writes accurate docs.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Generate or update documentation for this NestJS + Next.js monorepo. Scan the codebase and produce accurate, navigable docs.
+Generate or update documentation for this NestJS + Angular monorepo. Scan the codebase and produce accurate, navigable docs.
 
 **Input**: Optionally specify which document(s) to generate. Default: all documents.
 
@@ -20,7 +20,7 @@ Generate or update documentation for this NestJS + Next.js monorepo. Scan the co
 |----------|---------|---------------|
 | `PROJECT_MAP.md` | Directory + file inventory | New app, new package, major restructure |
 | `ARCHITECTURE_OVERVIEW.md` | Service topology, module structure, flows | New service, new event/queue, auth changes |
-| `ENTRYPOINTS.md` | All HTTP, tRPC, event, and job entry points | New route, new event pattern, new job |
+| `ENTRYPOINTS.md` | All HTTP, event, and job entry points | New route, new event pattern, new job |
 | `CONVENTIONS.md` | Coding standards and patterns | New pattern adopted, convention change |
 | `DEPENDENCY_GRAPH.md` | Package and module dependency map | New dependency, new inter-service comm |
 

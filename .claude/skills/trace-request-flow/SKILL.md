@@ -2,18 +2,18 @@
 name: trace-request-flow
 description: Trace the complete lifecycle of an HTTP request or event through the system — from entrypoint to database and back. Produces a step-by-step flow with file references.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Trace a request through this NestJS + Next.js monorepo. Follow the code from entry to persistence and back.
+Trace a request through this NestJS + Angular monorepo. Follow the code from entry to persistence and back.
 
 **Input**: The argument after `/trace-request-flow` is what to trace. Could be:
 - An HTTP route: `POST /api/auth/sign-in/email`
 - An event pattern: `user:created`
-- A tRPC procedure: `users.getUser`
+- A REST endpoint: `GET /api/users/:id`
 - A job pattern: `job:send_welcome_email`
 - A vague description: "user registration flow"
 
@@ -31,11 +31,6 @@ grep -r "Controller\|@Get\|@Post\|@Put\|@Delete\|@Patch" apps --include="*.ts" |
 For events/messages:
 ```bash
 grep -r "EventPattern\|MessagePattern" apps --include="*.ts" | grep -i "<pattern>"
-```
-
-For tRPC:
-```bash
-grep -r "procedure\|router\|query\|mutation" apps --include="*.ts" | grep -i "<procedure>"
 ```
 
 ### Phase 2: Trace the Middleware Chain
@@ -128,18 +123,16 @@ worker/EmailConsumer.sendWelcomeEmail()
 Email delivered
 ```
 
-### tRPC → Auth validation → DB
+### REST → Auth validation → DB
 
 ```
-web (httpBatchLink) → POST /api/trpc/<procedure>
-  ↓ TrpcModule
-AppRouter.<router>.<procedure>()
-  ↓ MicroserviceAuthTrpcMiddleware
+web (Angular, TanStack Query) → GET /api/users/:id
+  ↓ AuthGuard (APP_GUARD)
 Redis: auth:authenticate { token }
   ↓
 auth/AuthController.authenticate() → returns user
   ↓
-Procedure executes with session context
+UsersController.getUser() → UsersService
   ↓ Prisma
 PostgreSQL query
 ```

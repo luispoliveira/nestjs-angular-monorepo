@@ -1,6 +1,6 @@
 ---
 name: "Refactor Module"
-description: "Safely refactor a NestJS module or Next.js component — improve structure, fix convention deviations, without changing behavior. Validates build after changes."
+description: "Safely refactor a NestJS module or Angular component — improve structure, fix convention deviations, without changing behavior. Validates build after changes."
 category: Refactoring
 tags: [refactor, module, service, component, cleanup]
 ---
@@ -24,7 +24,7 @@ Refactor a module, service, or component in this monorepo. Improve the code with
 - `process.env` outside `main.ts` → `ConfigService.getOrThrow()`
 - Hardcoded queue names / event patterns → import from `@repo/shared`
 - `PrismaClient` injected directly → use `DatabaseService`
-- BullMQ imports → Bull v4
+- Legacy `bull` / `@nestjs/bull` imports → `@nestjs/bullmq`
 - Zod v3 APIs → Zod v4 (`z.email()` not `z.string().email()`)
 - `ZodValidationPipe` registered per-module → remove (it's global)
 - `console.log` → `this.logger.log()` or `this.logger.debug()`

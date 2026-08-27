@@ -2,13 +2,13 @@
 name: analyze-architecture
 description: Analyze the codebase architecture — modules, services, patterns, and cross-cutting concerns. Produces a clear structural overview with ASCII diagrams.
 license: MIT
-compatibility: NestJS + Next.js monorepo
+compatibility: NestJS + Angular monorepo
 metadata:
   author: project
   version: "1.0"
 ---
 
-Analyze the architecture of this NestJS + Next.js monorepo. Produce a structured report with ASCII diagrams.
+Analyze the architecture of this NestJS + Angular monorepo. Produce a structured report with ASCII diagrams.
 
 **Do not implement anything.** This is a read-only analysis skill.
 

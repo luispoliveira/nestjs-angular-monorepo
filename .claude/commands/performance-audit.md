@@ -5,7 +5,7 @@ category: Performance
 tags: [performance, audit, database, queues, caching]
 ---
 
-Audit this NestJS + Next.js monorepo for performance issues.
+Audit this NestJS + Angular monorepo for performance issues.
 
 **Input**: Optional scope — e.g., `apps/api/src/users`, or leave blank for full codebase.
 
@@ -18,7 +18,7 @@ Audit this NestJS + Next.js monorepo for performance issues.
 - **Missing pagination**: findMany without skip/take
 - **Queue config**: jobs missing removeOnFail (unbounded Redis growth)
 - **Cache opportunities**: repeated identical DB queries per request
-- **Next.js**: unnecessary 'use client', missing Suspense boundaries
+- **Angular**: missing `OnPush`, methods called in templates, missing `track` on `@for` loops
 
 ## Output Format
 

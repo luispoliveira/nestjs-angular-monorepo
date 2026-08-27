@@ -5,7 +5,7 @@ category: Analysis
 tags: [architecture, analysis, modules, services]
 ---
 
-Analyze the architecture of this NestJS + Next.js monorepo. Produce a structured report with ASCII diagrams.
+Analyze the architecture of this NestJS + Angular monorepo. Produce a structured report with ASCII diagrams.
 
 **Do not implement anything.** This is a read-only analysis.
 

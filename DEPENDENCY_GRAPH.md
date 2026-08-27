@@ -1,4 +1,4 @@
-# DEPENDENCY_GRAPH.md — NestJS + Next.js Monorepo
+# DEPENDENCY_GRAPH.md — NestJS + Angular Monorepo
 
 Package dependencies, module imports, and cross-service communication map.
 Arrows indicate "depends on" direction.
@@ -20,11 +20,12 @@ apps/auth ───────────────────────�
                                                                       │
 apps/api ────────────────────────────────────────────────────────────┤
   │                                                                  │
-  ├─→ @repo/shared         (SharedModule, MicroserviceUtil, guards,  │
-  │                          tRPC middlewares)                        │
+  ├─→ @repo/shared         (SharedModule, MicroserviceUtil,          │
+  │                          MicroserviceAuthGuard)                   │
   ├─→ @repo/database       (DatabaseService)                         │
-  ├─→ @repo/shared-types   (schemas, RoleEnum)                       │
-  └─→ nestjs-trpc-v2       (TRPCModule.forRoot — tRPC HTTP gateway)  │
+  └─→ @repo/shared-types   (schemas, RoleEnum)                       │
+      Plain REST controllers only — no tRPC (removed in the          │
+      Next.js → Angular migration).                                  │
                                                                       │
 apps/cron ───────────────────────────────────────────────────────────┤
   │                                                                  │
@@ -44,9 +45,15 @@ apps/worker ──────────────────────�
                                                                       │
 apps/web ────────────────────────────────────────────────────────────┘
   │
-  ├─→ @repo/trpc           (AppRouter type for type safety)
-  ├─→ @repo/shared-types   (Zod schemas for forms, RoleEnum)
-  └─→ better-auth/client   (authClient, session hooks)
+  ├─→ @repo/shared-types   (Zod schemas for forms + response parsing,
+  │                          RoleEnum, zodValidator())
+  ├─→ better-auth/client   (authClient, session atom bridged by
+  │                          SessionService)
+  └─→ @tanstack/angular-query-experimental (injectQuery/injectMutation
+                             against apps/api's REST endpoints)
+
+  No @repo/trpc — that package was removed in the Next.js → Angular
+  migration; apps/web calls apps/api's REST endpoints directly.
 ```
 
 ---
@@ -59,7 +66,7 @@ apps/web ───────────────────────�
 | --------------------------------------------------------------------------- | --------------------------------- |
 | `SharedModule.register({ metrics: { appName: 'api' }, throttlerRedisUrl })` | `@repo/shared`                    |
 | `ClientsModule` with `registerAuthService()`                                | `@repo/shared` (MicroserviceUtil) |
-| `TRPCModule.forRoot({ basePath: '/api/trpc', context: AppContext })`        | `nestjs-trpc-v2`                  |
+| `APP_GUARD: MicroserviceAuthGuard`                                          | `@repo/shared`                    |
 
 ### `apps/cron`
 
@@ -119,10 +126,9 @@ listens on or sends to Redis as a microservice.
 | `@nestjs/throttler`                 | via shared                 | Rate limiting                    |
 | `@nest-lab/throttler-storage-redis` | via shared                 | Redis throttler storage          |
 | `@willsoto/nestjs-prometheus`       | via shared                 | Prometheus metrics               |
-| `better-auth`                       | `^1.6`                     | Auth framework                   |
+| `better-auth`                       | `^1.6.23`                  | Auth framework                   |
 | `@thallesp/nestjs-better-auth`      | via auth                   | NestJS adapter for better-auth   |
-| `@better-auth/prisma-adapter`       | `^1.6`                     | Prisma adapter for better-auth   |
-| `nestjs-trpc-v2`                    | via api/shared             | tRPC server integration          |
+| `@better-auth/prisma-adapter`       | via auth                   | Prisma adapter for better-auth   |
 | `nestjs-zod`                        | via shared                 | Zod validation pipe + serializer |
 | `nestjs-pino`                       | via shared                 | Structured logging               |
 | `nestjs-cls`                        | via shared                 | Continuation-local storage       |
@@ -131,7 +137,10 @@ listens on or sends to Redis as a microservice.
 | `@nestjs/mongoose`                  | via shared                 | MongoDB / Mongoose               |
 | `bullmq`                            | via `@nestjs/bullmq`       | BullMQ client                    |
 | `@sentry/nestjs`                    | via shared                 | Error tracking (optional — enabled by setting `SENTRY_DSN`) |
-| `zod`                               | `~4.3.6` (pinned globally) | Validation schemas               |
+| `zod`                               | `~4.4.3` (pinned globally) | Validation schemas               |
+
+No `nestjs-trpc-v2` — the tRPC gateway was removed from `apps/api` in the
+Next.js → Angular migration (`openspec/changes/archive/2026-08-26-migrate-web-to-angular`).
 
 **Dev / test dependencies** (apps + `packages/shared`, `packages/mail`, `packages/database`):
 
@@ -142,24 +151,23 @@ listens on or sends to Redis as a microservice.
 | `@nestjs/testing` | `Test.createTestingModule` for unit and integration tests |
 | `@types/jest`     | TypeScript types for Jest globals                         |
 
-### Frontend (`apps/web`)
+### Frontend (`apps/web`) — Angular 22
 
-| Package                    | Version       | Role                                           |
-| -------------------------- | ------------- | ---------------------------------------------- |
-| `next`                     | `16.x`        | Next.js App Router                             |
-| `react`                    | `^19`         | React                                          |
-| `better-auth`              | `^1.6`        | Auth client (`twoFactorClient`, `adminClient`) |
-| `@trpc/react-query`        | `^11`         | tRPC client                                    |
-| `@tanstack/react-query`    | `^5`          | Query cache                                    |
-| `@hookform/resolvers`      | `^5`          | Zod resolver for React Hook Form               |
-| `react-hook-form`          | via resolvers | Form state management                          |
-| `tailwindcss`              | `^4`          | CSS framework                                  |
-| `class-variance-authority` | `^0.7`        | Component variants                             |
-| `clsx` + `tailwind-merge`  | via utils     | Conditional class merging                      |
-| `next-themes`              | via layout    | Theme provider                                 |
-| `sonner`                   | via layout    | Toast notifications                            |
-| `lucide-react`             | via nav       | Icons                                          |
-| `zod`                      | `~4.3.6`      | Client-side validation                         |
+| Package                                | Version    | Role                                                          |
+| ---------------------------------------- | ---------- | -------------------------------------------------------------- |
+| `@angular/core`                         | `^22.1.0`  | Standalone components + signals                               |
+| `@angular/router`                       | `^22.1.0`  | Functional guards (`CanActivateFn`), lazy-loaded routes        |
+| `@angular/forms`                        | `^22.1.0`  | Reactive forms                                                 |
+| `@angular/material`                     | `^22.1.4`  | Dialogs, tables, menus, form fields, snackbars                 |
+| `@angular/cdk`                          | `^22.1.4`  | Component Dev Kit (backs Angular Material)                     |
+| `@tanstack/angular-query-experimental`  | `^5.102.5` | `injectQuery`/`injectMutation` — data fetching, 60 s `staleTime` |
+| `better-auth`                           | `^1.6.23`  | Vanilla auth client (no Angular-specific package), plugins `twoFactorClient()` + `adminClient()` |
+| `tailwindcss`                           | `^4`       | Utility CSS — owns layout; Angular Material owns component surfaces |
+| `zod`                                   | `~4.4.3`   | Client-side validation, shared with the backend via `@repo/shared-types` |
+| `rxjs`                                  | via Angular| Reactive primitives (Angular internals)                        |
+
+No `next`, no React, no tRPC client, no React Hook Form — all replaced by
+Angular equivalents in the Next.js → Angular migration.
 
 ---
 
@@ -171,12 +179,18 @@ listens on or sends to Redis as a microservice.
 │   ├── BaseProducer         ← extend for new BullMQ producers
 │   ├── BasePublisher        ← extend for new Redis event publishers
 │   └── BaseDlqService       ← extend for new DLQ service implementations
+├── config/
+│   └── baseEnvSchema        ← shared env validation base, extended per-app
 ├── constants/               ← SERVICES, QUEUES, EVENT_PATTERNS, MESSAGE_PATTERNS,
 │                               JOB_PATTERNS, CLS_CORRELATION_ID, THROTTLE_TIERS
 ├── decorators/
 │   ├── @Public()            ← bypasses APP_GUARD
 │   ├── @CurrentUser()       ← extracts request.user
 │   └── @RateLimit(tier)     ← CustomThrottlerGuard + Throttle config
+├── encryption/
+│   ├── EncryptionService    ← AES field crypto
+│   └── encryption.util      ← blind index helper
+├── enums/                   ← barrel re-export point (currently empty)
 ├── filters/
 │   └── AllExceptionFilter   ← @Catch() — normalised errors, Sentry capture
 ├── guards/
@@ -187,6 +201,10 @@ listens on or sends to Redis as a microservice.
 ├── interceptors/
 │   ├── LoggingInterceptor   ← HTTP req/res → MongoDB Log
 │   └── CorrelationInterceptor← propagates correlationId into CLS for RPC
+├── interfaces/
+│   └── BaseService<T>       ← findOneById(id): Promise<T>
+├── logging/
+│   └── pino.config.ts       ← pino logger config (pretty dev / JSON prod)
 ├── metrics/
 │   ├── MetricsModule        ← Prometheus with per-app labels
 │   ├── MetricsController    ← GET /metrics (MetricsAuthGuard protected)
@@ -204,12 +222,6 @@ listens on or sends to Redis as a microservice.
 │   ├── QueueModule          ← BullMQ root + registerQueues (main + DLQ)
 │   ├── producers/EmailProducer← send all email job types
 │   └── input/               ← Zod DTOs for each job type
-├── trpc/
-│   ├── TrpcModule           ← wraps nestjs-trpc-v2 + MongoModule
-│   ├── AppContext            ← TRPCContext factory
-│   ├── BaseRouter           ← abstract; applies LoggingTrpcMiddleware
-│   ├── LoggingTrpcMiddleware ← logs tRPC req/res to MongoDB
-│   └── AuthTrpcMiddleware   ← validates token via AUTH_SERVICE
 ├── types/
 │   ├── PaginatedType        ← generic paginated response shape
 │   └── PagedMetaType        ← pagination metadata
@@ -219,8 +231,13 @@ listens on or sends to Redis as a microservice.
     ├── PaginatedUtil        ← getPaginatedResponse(items, total, skip, take)
     ├── ContextUtil          ← extractToken from header/cookie
     ├── SanitizeUtil         ← redacts sensitive keys (password, token, etc.)
-    └── SentryUtil           ← init(appName), captureException(error, context)
+    ├── SentryUtil           ← init(appName), captureException(error, context)
+    └── LoggerUtil           ← logger helper
 ```
+
+No `trpc/` sub-directory — `packages/shared`'s tRPC middlewares (`TrpcModule`,
+`AppContext`, `BaseRouter`, `LoggingTrpcMiddleware`, `AuthTrpcMiddleware`) were
+removed along with `apps/api`'s tRPC gateway in the Next.js → Angular migration.
 
 ---
 
@@ -258,8 +275,7 @@ AppModule
 │
 ├─ APP_GUARD: MicroserviceAuthGuard
 │
-└─ TRPCModule.forRoot({ basePath: '/api/trpc', context: AppContext })  ← nestjs-trpc-v2
-    └─ AppRouter (@Router, @UseMiddlewares(LoggingTrpcMiddleware, AuthTrpcMiddleware))
+└─ AppController (@Controller(), plain REST — no tRPC)
 ```
 
 ### `apps/cron` Module Graph

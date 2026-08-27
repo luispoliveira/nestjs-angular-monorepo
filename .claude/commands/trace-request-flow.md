@@ -5,12 +5,12 @@ category: Analysis
 tags: [trace, request, flow, debug]
 ---
 
-Trace a request through this NestJS + Next.js monorepo. Follow the code from entry to persistence and back.
+Trace a request through this NestJS + Angular monorepo. Follow the code from entry to persistence and back.
 
 **Input**: What to trace. Examples:
 - An HTTP route: `POST /api/auth/sign-in/email`
 - An event: `user:created`
-- A tRPC procedure: `users.getUser`
+- A REST endpoint: `GET /api/users/:id`
 - A job: `job:send_welcome_email`
 - A description: "user registration flow"
 

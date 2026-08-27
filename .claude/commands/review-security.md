@@ -5,7 +5,7 @@ category: Security
 tags: [security, audit, vulnerability, owasp]
 ---
 
-Perform a security audit of this NestJS + Next.js monorepo.
+Perform a security audit of this NestJS + Angular monorepo.
 
 **Input**: Optional scope — e.g., `apps/auth`, `apps/api`, or leave blank for full codebase.
 
@@ -18,8 +18,8 @@ Perform a security audit of this NestJS + Next.js monorepo.
 - **Injection**: All DB via Prisma (parameterized), no $queryRawUnsafe with user input
 - **HTTP security**: Helmet enabled, CORS with specific origin, ThrottlerModule active
 - **Error handling**: AllExceptionFilter active, no stack traces in responses
-- **Dependencies**: Bull v4 (not BullMQ), no known-vulnerable auth packages
-- **Next.js**: No secrets in NEXT_PUBLIC_*, getServerSession() for server auth
+- **Dependencies**: BullMQ (not legacy Bull v4/`@nestjs/bull`), no known-vulnerable auth packages
+- **Angular**: No secrets in `environment.ts`, session read via `SessionService`/`AUTH_CLIENT` — never trust it without server-side re-validation
 - **MongoDB**: Logs/audit only, TTL indexes set
 
 ## Output Format

@@ -1,4 +1,4 @@
-# ENTRYPOINTS.md — NestJS + Next.js Monorepo
+# ENTRYPOINTS.md — NestJS + Angular Monorepo
 
 All system entry points: HTTP routes, microservice message/event patterns, BullMQ jobs, and shared health/metrics endpoints.
 
@@ -30,24 +30,22 @@ better-auth exposes these sub-routes automatically:
 
 ### `apps/api` — prefix `/api`, port `3100`, versioning enabled
 
-tRPC HTTP gateway (`TRPCModule.forRoot`, `basePath: '/api/trpc'`, `globalPrefix: 'api'`).
-`MicroserviceAuthGuard` guards routes globally; the router applies
-`LoggingTrpcMiddleware` + `AuthTrpcMiddleware`.
+Plain REST HTTP gateway for `apps/web`'s own backend calls (`globalPrefix: 'api'`).
+No tRPC — that layer was removed in the Next.js → Angular migration
+(`openspec/changes/archive/2026-08-26-migrate-web-to-angular`).
+`MicroserviceAuthGuard` guards routes globally (validates the session over
+Redis against `apps/auth`).
 
-| Method     | Path                | Description                                   |
-| ---------- | ------------------- | --------------------------------------------- |
-| `GET/POST` | `/api/trpc/*`       | tRPC endpoint (all procedures, batched)       |
-| `GET`      | `/api/`             | Hello/health route (`AppController.getHello`) |
-| `GET`      | `/api/health/live`  | Liveness probe                                |
-| `GET`      | `/api/health/ready` | Readiness probe                               |
-| `GET`      | `/api/metrics`      | `MetricsAuthGuard` — Prometheus scrape endpoint |
-| `GET`      | `/api/docs`         | Swagger UI (non-production only)              |
+| Method | Path                | Description                                   |
+| ------ | ------------------- | ---------------------------------------------- |
+| `GET`  | `/api/`             | Hello/health route (`AppController.getHello`), `@RateLimit('default')` |
+| `GET`  | `/api/health/live`  | Liveness probe                                |
+| `GET`  | `/api/health/ready` | Readiness probe                               |
+| `GET`  | `/api/metrics`      | `MetricsAuthGuard` — Prometheus scrape endpoint |
+| `GET`  | `/api/docs`         | Swagger UI (non-production only)              |
 
-#### tRPC procedures (`AppRouter`)
-
-| Procedure | Type  | Output   | Handler             |
-| --------- | ----- | -------- | ------------------- |
-| `hello`   | query | `string` | `AppRouter.hello()` |
+`AppController` (`apps/api/src/app.controller.ts`) is currently the only
+application controller — add new REST resources here as the app grows.
 
 ### `apps/cron` — prefix `/api`, port `3200`
 
@@ -85,24 +83,6 @@ No application HTTP routes — all traffic is via Redis message patterns and Bul
 
 ---
 
-## tRPC Procedures
-
-Base path: `/api/trpc` (on `apps/api`). Both middlewares apply to all procedures:
-
-1. `LoggingTrpcMiddleware` — logs to MongoDB, duration, user, input/output.
-2. `AuthTrpcMiddleware` — validates token via `MESSAGE_PATTERNS.AUTH_AUTHENTICATE`.
-
-| Router      | Procedure | Type  | Output   | File                         |
-| ----------- | --------- | ----- | -------- | ---------------------------- |
-| `AppRouter` | `hello`   | Query | `string` | `apps/api/src/app.router.ts` |
-
-`BaseRouter` in `packages/shared/src/trpc/router/base.router.ts` applies `LoggingTrpcMiddleware` to all subclasses.
-
-Auth tRPC client (web → auth service): `basePath='/api/auth/trpc'` — type source `@repo/trpc/auth`.
-API tRPC client (web → api service): `basePath='/api/trpc'` — type source `@repo/trpc/api`.
-
----
-
 ## Redis Message Patterns (`@MessagePattern` — request/response)
 
 Constant source: `packages/shared/src/constants/events.ts`
@@ -114,7 +94,7 @@ Constant source: `packages/shared/src/constants/events.ts`
 | `MESSAGE_PATTERNS.DLQ_REPLAY`        | `'dlq:replay'`        | `apps/worker` | `DlqController.replay`        | Move DLQ job back to `email-queue`          |
 | `MESSAGE_PATTERNS.DLQ_PURGE`         | `'dlq:purge'`         | `apps/worker` | `DlqController.purge`         | Remove a job from the DLQ                   |
 
-Senders: `MicroserviceAuthGuard` and `AuthTrpcMiddleware` send `AUTH_AUTHENTICATE`. DLQ patterns are called from `apps/api` or any service that manages the worker.
+Senders: `MicroserviceAuthGuard` (in `apps/api`) sends `AUTH_AUTHENTICATE`. DLQ patterns are called from `apps/api` or any service that manages the worker.
 
 ---
 
@@ -181,23 +161,25 @@ All input schemas are in `packages/shared/src/queue/input/` and re-exported from
 
 ---
 
-## Next.js API Routes (`apps/web`)
+## Angular Routes (`apps/web`)
 
-| Method | Path                  | File                              | Notes                      |
-| ------ | --------------------- | --------------------------------- | -------------------------- |
-| `*`    | `/api/auth/[...path]` | `app/api/auth/[...path]/route.ts` | Proxies to `AUTH_API_URL`  |
-| `*`    | `/api/trpc/[...path]` | `app/api/trpc/[...path]/route.ts` | tRPC handler (api service) |
+No server-side routes — `apps/web` is a static Angular build served by Nginx in
+production (proxying `/api/*` to `apps/api`/`apps/auth`) and by `ng serve` in
+dev. Client-side route table: `apps/web/src/app/app.routes.ts`.
 
----
+| Route         | Component                                                          | Guard(s)                  |
+| ------------- | -------------------------------------------------------------------- | -------------------------- |
+| `/`           | redirects to `/sign-in`                                               | —                          |
+| `/sign-in`    | `features/sign-in/sign-in.ts`                                         | `guestGuard`               |
+| `/dashboard`  | `features/dashboard/dashboard.ts` (child of `shell/shell.ts`)         | `authGuard`                |
+| `/account`    | `features/account/account.ts` (child of `shell/shell.ts`)             | `authGuard`                |
+| `/users`      | `features/users/users.ts` (child of `shell/shell.ts`)                 | `authGuard`, `adminGuard`  |
+| `/users/:id`  | `features/users/user-detail/user-detail.ts` (child of `shell/shell.ts`) | `authGuard`, `adminGuard`  |
 
-## Next.js Pages
-
-| Route        | File                                 | Protection                          |
-| ------------ | ------------------------------------ | ----------------------------------- |
-| `/`          | `app/page.tsx`                       | Public (redirects based on session) |
-| `/sign-in`   | `app/(auth)/sign-in/page.tsx`        | Public                              |
-| `/dashboard` | `app/(dashboard)/dashboard/page.tsx` | Session required (layout redirect)  |
-| `/users`     | `app/(dashboard)/users/page.tsx`     | `RoleEnum.ADMIN` only               |
+All backend calls happen client-side via `injectQuery`/`injectMutation`
+against `apps/api`'s REST endpoints or `apps/auth`'s better-auth routes
+(through the vanilla `better-auth/client`) — there is no server-rendering or
+API-route proxy layer in `apps/web` itself.
 
 ---
 

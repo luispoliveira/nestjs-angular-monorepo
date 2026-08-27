@@ -5,7 +5,7 @@ category: Testing
 tags: [tdd, testing, jest, unit-test, tdd-cycle]
 ---
 
-Apply test-driven development in this NestJS + Next.js monorepo.
+Apply test-driven development in this NestJS + Angular monorepo.
 
 **Input**: What to implement. Examples:
 - `users.getUser — returns user by ID, throws 404 if not found`

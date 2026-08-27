@@ -5,7 +5,7 @@ category: Analysis
 tags: [dependencies, modules, packages, graph]
 ---
 
-Map all dependencies in this NestJS + Next.js monorepo.
+Map all dependencies in this NestJS + Angular monorepo.
 
 **Input**: Optional focus — e.g., `apps/auth`, `@repo/shared`, or leave blank for full map.
 
@@ -22,7 +22,6 @@ Map all dependencies in this NestJS + Next.js monorepo.
 - Apps must NOT import from other apps (only via Redis)
 - @repo/shared CAN import @repo/database (provides DatabaseModule)
 - @repo/shared-types must have ZERO internal dependencies
-- @repo/trpc is type-only — no runtime imports
 - apps/worker is the ONLY consumer of @repo/mail
 - MongoDB used only via @repo/shared/mongo
 

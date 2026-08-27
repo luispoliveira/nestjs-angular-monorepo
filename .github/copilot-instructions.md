@@ -6,7 +6,7 @@
 >
 > 1. Use `pnpm` exclusively — never npm or yarn.
 > 2. Auth via `better-auth` only — never add Passport or JWT.
-> 3. Queues via `@nestjs/bull` (Bull v4) — never BullMQ.
+> 3. Queues via `@nestjs/bullmq` (BullMQ) — never legacy Bull v4 / `@nestjs/bull`.
 > 4. Validation via Zod v4 + `nestjs-zod` — use `z.email()`, not `z.string().email()`.
 > 5. Never hardcode tokens, queue names, or patterns — always import from `@repo/shared`.
 
@@ -36,7 +36,7 @@
 
 ### Infrastructure
 
-- **Queue**: `@nestjs/bull` (Bull v4) with Redis — **not** BullMQ
+- **Queue**: `@nestjs/bullmq` (BullMQ) with Redis — **not** legacy Bull v4 / `@nestjs/bull`
 - **Logging**: `nestjs-pino` with correlation IDs via `nestjs-cls`
 - **Health**: `@nestjs/terminus` (`HealthController` registered globally by `SharedModule`)
 

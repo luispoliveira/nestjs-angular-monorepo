@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { RoleEnum, User } from '@repo/shared-types';
 import { of } from 'rxjs';
 import { AUTH_CLIENT, SessionAtomClient } from '../../auth/auth-client.token';
+import { BanUserDialog } from './ban-user-dialog/ban-user-dialog';
 import { Users } from './users';
 
 function user(id: string, overrides: Partial<User> = {}): User {
@@ -53,6 +55,7 @@ function setUp(
     providers: [
       provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
       { provide: AUTH_CLIENT, useValue: { admin, useSession: fakeSessionAtom(opts.currentUserId ?? 'me') } },
+      provideRouter([]),
     ],
   });
   if (opts.confirmResult !== undefined) {
@@ -112,6 +115,18 @@ describe('Users', () => {
     expect(lastCall?.[0].query.offset).toBe(20);
   });
 
+  it('links each row to its user detail route', async () => {
+    const listUsers = vi.fn().mockResolvedValue({ data: { users: [user('1')], total: 1 }, error: null });
+    const fixture = setUp({ listUsers });
+    await waitForQueryToSettle(fixture);
+
+    fixture.nativeElement.querySelector('[data-testid="actions-menu-1"]').click();
+    fixture.detectChanges();
+
+    const link = document.querySelector('[data-testid="view-details-action"]');
+    expect(link?.getAttribute('href')).toBe('/users/1');
+  });
+
   it('applies status filter via the API and role filter client-side when both are active', async () => {
     const listUsers = vi.fn().mockImplementation(async ({ query }: { query: Record<string, unknown> }) => {
       expect(query['filterField']).toBe('banned');
@@ -148,30 +163,15 @@ describe('Users', () => {
     expect(fixture.nativeElement.querySelectorAll('tr[data-testid^="user-row-"]').length).toBe(0);
   });
 
-  it('bans a user after confirmation and refreshes the list', async () => {
+  it('opens the ban dialog for the target user', async () => {
     const listUsers = vi.fn().mockResolvedValue({ data: { users: [user('1')], total: 1 }, error: null });
-    const banUser = vi.fn().mockResolvedValue({ error: null });
-    const fixture = setUp({ listUsers, banUser }, { confirmResult: true });
-    await waitForQueryToSettle(fixture);
-    const invalidateSpy = vi.spyOn(TestBed.inject(QueryClient), 'invalidateQueries');
-
-    fixture.componentInstance['ban'](user('1'));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(banUser).toHaveBeenCalledWith({ userId: '1' });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['admin', 'users'] });
-  });
-
-  it('does not ban when the confirmation is cancelled', async () => {
-    const listUsers = vi.fn().mockResolvedValue({ data: { users: [user('1')], total: 1 }, error: null });
-    const banUser = vi.fn();
-    const fixture = setUp({ listUsers, banUser }, { confirmResult: false });
+    const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue({} as ReturnType<MatDialog['open']>);
+    const fixture = setUp({ listUsers });
     await waitForQueryToSettle(fixture);
 
     fixture.componentInstance['ban'](user('1'));
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(banUser).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith(BanUserDialog, { data: { user: user('1') } });
   });
 
   it('unbans a user without a confirmation step', async () => {
@@ -201,20 +201,6 @@ describe('Users', () => {
     expect(invalidateSpy).not.toHaveBeenCalled();
     const rowsAfter = fixture.nativeElement.querySelectorAll('tr[data-testid^="user-row-"]');
     expect(rowsAfter.length).toBe(1);
-  });
-
-  it('shows an error and leaves the list unchanged when ban is rejected by the server', async () => {
-    const listUsers = vi.fn().mockResolvedValue({ data: { users: [user('1')], total: 1 }, error: null });
-    const banUser = vi.fn().mockResolvedValue({ error: { message: 'Cannot ban this user' } });
-    const fixture = setUp({ listUsers, banUser }, { confirmResult: true });
-    await waitForQueryToSettle(fixture);
-    const invalidateSpy = vi.spyOn(TestBed.inject(QueryClient), 'invalidateQueries');
-
-    fixture.componentInstance['ban'](user('1'));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(invalidateSpy).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelectorAll('tr[data-testid^="user-row-"]').length).toBe(1);
   });
 
   it('deletes a user after confirmation and refreshes the list', async () => {

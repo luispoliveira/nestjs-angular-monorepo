@@ -2,7 +2,9 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +20,7 @@ import { RoleEnum, User, usersListResponseSchema } from '@repo/shared-types';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { AUTH_CLIENT } from '../../auth/auth-client.token';
 import { SessionService } from '../../auth/session.service';
+import { BanUserDialog } from './ban-user-dialog/ban-user-dialog';
 import { ConfirmDialog } from './confirm-dialog/confirm-dialog';
 import { CreateUserDialog } from './create-user-dialog/create-user-dialog';
 import { EditRoleDialog } from './edit-role-dialog/edit-role-dialog';
@@ -40,7 +43,9 @@ const DISPLAYED_COLUMNS = ['name', 'email', 'role', 'status', 'createdAt', 'acti
   imports: [
     DatePipe,
     ReactiveFormsModule,
+    RouterLink,
     MatButtonModule,
+    MatCardModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -157,23 +162,7 @@ export class Users {
   }
 
   protected ban(user: User): void {
-    const ref = this.dialog.open(ConfirmDialog, {
-      data: {
-        title: 'Ban user',
-        description: `Are you sure you want to ban ${user.name || user.email}? They will no longer be able to sign in.`,
-        confirmLabel: 'Ban',
-      },
-    });
-    ref.afterClosed().subscribe(async (confirmed: boolean) => {
-      if (!confirmed) return;
-      const { error } = await this.authClient.admin.banUser({ userId: user.id });
-      if (error) {
-        this.snackBar.open(error.message ?? 'Failed to ban user.', 'Dismiss', { duration: 5000 });
-        return;
-      }
-      await this.queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      this.snackBar.open('User banned', 'Dismiss', { duration: 5000 });
-    });
+    this.dialog.open(BanUserDialog, { data: { user } });
   }
 
   protected delete(user: User): void {

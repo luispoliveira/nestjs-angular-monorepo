@@ -1,14 +1,18 @@
-.stat-card {
-  transition: box-shadow 0.15s ease;
+:host {
+  display: block;
+  max-width: 640px;
 }
 
-.stat-icon {
+.account-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
+  font-size: 1.25rem;
+  font-weight: 600;
 }

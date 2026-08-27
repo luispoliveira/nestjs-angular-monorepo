@@ -14,10 +14,14 @@ html {
   // is inherited, and any explicit value on a descendant (e.g. `body`)
   // would win over this element and break the theme switch.
   color-scheme: light;
+  // Primary matches the reference admin dashboard's emerald/green accent
+  // (oklch(.55 .175 160) ≈ #008e4c) — spring-green is Material's closest
+  // premade M3 palette to that hue, confirmed by sampling the reference's
+  // actual computed --primary token in a live browser check.
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: mat.$spring-green-palette,
         tertiary: mat.$blue-palette,
       ),
       typography: Roboto,

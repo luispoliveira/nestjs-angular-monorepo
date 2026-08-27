@@ -1,0 +1,100 @@
+@if (userQuery.isPending()) {
+  <mat-spinner diameter="32" data-testid="user-detail-loading" />
+} @else if (userQuery.isError()) {
+  <p role="alert" data-testid="user-detail-error">{{ userQuery.error().message }}</p>
+} @else if (user(); as u) {
+  <div class="flex flex-col gap-6">
+    <mat-card>
+      <mat-card-content class="flex flex-wrap items-center gap-4">
+        <span class="detail-avatar">{{ initials() }}</span>
+        <div class="flex-1">
+          <h1 class="text-xl font-semibold" data-testid="user-detail-name">{{ u.name }}</h1>
+          <p class="text-sm text-gray-500" data-testid="user-detail-email">{{ u.email }}</p>
+          <mat-chip-set class="mt-1">
+            <mat-chip>{{ u.role ?? '—' }}</mat-chip>
+            @if (u.banned) {
+              <mat-chip class="chip-danger" data-testid="user-detail-ban-state">Banned</mat-chip>
+            } @else {
+              <mat-chip class="chip-success" data-testid="user-detail-ban-state">Active</mat-chip>
+            }
+          </mat-chip-set>
+          <p class="mt-1 text-sm text-gray-500">Member since {{ u.createdAt | date: 'mediumDate' }}</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <button mat-stroked-button type="button" (click)="setPassword()" data-testid="set-password-action">
+            Set password
+          </button>
+          @if (canImpersonate()) {
+            <button mat-stroked-button type="button" (click)="impersonate()" data-testid="impersonate-action">
+              Impersonate
+            </button>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Access</mat-card-title>
+        <mat-card-subtitle>Ban status for this account</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="flex flex-col gap-1">
+        @if (u.banned) {
+          @if (u.banReason) {
+            <p data-testid="user-detail-ban-reason">Reason: {{ u.banReason }}</p>
+          }
+          @if (u.banExpires) {
+            <p data-testid="user-detail-ban-expires">Until: {{ u.banExpires | date: 'medium' }}</p>
+          }
+        } @else {
+          <p class="text-sm text-gray-500">This user can sign in normally.</p>
+        }
+      </mat-card-content>
+      <mat-card-actions>
+        @if (u.banned) {
+          <button mat-stroked-button type="button" (click)="unban()" data-testid="detail-unban-action">
+            Unban user
+          </button>
+        } @else {
+          <button mat-stroked-button type="button" (click)="ban()" data-testid="detail-ban-action">Ban user</button>
+        }
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card data-testid="user-detail-sessions">
+      <mat-card-header class="w-full">
+        <div class="flex w-full items-center justify-between">
+          <div>
+            <mat-card-title>Active sessions</mat-card-title>
+            <mat-card-subtitle>Devices currently signed in</mat-card-subtitle>
+          </div>
+          @if (sessions().length > 0) {
+            <button mat-stroked-button type="button" (click)="revokeAllSessions()" data-testid="revoke-all-sessions">
+              Revoke all
+            </button>
+          }
+        </div>
+      </mat-card-header>
+
+      <mat-card-content class="flex flex-col gap-2">
+        @if (sessions().length === 0) {
+          <p data-testid="no-sessions">No active sessions.</p>
+        } @else {
+          @for (session of sessions(); track session.id) {
+            <div class="session-row" [attr.data-testid]="'session-row-' + session.id">
+              <span>{{ session.ipAddress ?? 'Unknown IP' }} — expires {{ session.expiresAt | date: 'medium' }}</span>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="revokeSession(session.token)"
+                [attr.data-testid]="'revoke-session-' + session.id"
+              >
+                Revoke
+              </button>
+            </div>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+}

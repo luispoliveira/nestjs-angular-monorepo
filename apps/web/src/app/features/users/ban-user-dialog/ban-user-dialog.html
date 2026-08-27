@@ -1,0 +1,30 @@
+<h2 mat-dialog-title>Ban user</h2>
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="flex flex-col gap-2">
+    <p>{{ data.user.name || data.user.email }} will no longer be able to sign in.</p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Reason (optional)</mat-label>
+      <input matInput formControlName="reason" data-testid="reason-input" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Expires</mat-label>
+      <mat-select formControlName="expiresInSeconds" data-testid="expires-input">
+        @for (option of expiryOptions; track option.label) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (serverError(); as error) {
+      <p role="alert" data-testid="server-error">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()" [disabled]="banUser.isPending()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="banUser.isPending()" data-testid="submit-button">
+      {{ banUser.isPending() ? 'Banning…' : 'Ban user' }}
+    </button>
+  </mat-dialog-actions>
+</form>

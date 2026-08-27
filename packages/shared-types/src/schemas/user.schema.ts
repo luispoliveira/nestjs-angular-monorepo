@@ -33,6 +33,8 @@ export const userSchema = z
     email: z.email(),
     role: z.enum(RoleEnum).nullish(),
     banned: z.boolean().nullish(),
+    banReason: z.string().nullish(),
+    banExpires: z.date().nullish(),
     createdAt: z.date(),
   })
   .meta({ id: 'User' });
@@ -52,3 +54,67 @@ export const usersListResponseSchema = z
   .meta({ id: 'UsersListResponse' });
 
 export type UsersListResponse = z.infer<typeof usersListResponseSchema>;
+
+export const banUserSchema = z.object({
+  reason: z.string().optional(),
+  /** `nullish` (not just `optional`) so a form's "Never expires" option can bind `null` directly. */
+  expiresInSeconds: z.number().int().positive().nullish(),
+});
+
+export type BanUserInput = z.infer<typeof banUserSchema>;
+
+/** Same policy as `signInSchema`'s password field — not a new rule. */
+export const setUserPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export type SetUserPasswordInput = z.infer<typeof setUserPasswordSchema>;
+
+/** The logged-in user editing their own name/email (`authClient.updateUser` / `changeEmail`). */
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, 'Full name is required'),
+  email: z.email('Invalid email address'),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/** Same length policy as `setUserPasswordSchema`'s `newPassword` — not a new rule. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/**
+ * A session as returned by the better-auth admin plugin's `listUserSessions`.
+ * `createdAt`/`expiresAt` are `z.date()` for the same reason `userSchema`'s
+ * `createdAt` is — better-auth's client parses them before this schema sees
+ * the value.
+ */
+export const userSessionSchema = z
+  .object({
+    id: z.string(),
+    token: z.string(),
+    createdAt: z.date(),
+    expiresAt: z.date(),
+    ipAddress: z.string().nullish(),
+    userAgent: z.string().nullish(),
+  })
+  .meta({ id: 'UserSession' });
+
+export type UserSession = z.infer<typeof userSessionSchema>;
+
+export const userSessionsListResponseSchema = z
+  .object({
+    sessions: z.array(userSessionSchema),
+  })
+  .meta({ id: 'UserSessionsListResponse' });
+
+export type UserSessionsListResponse = z.infer<typeof userSessionsListResponseSchema>;

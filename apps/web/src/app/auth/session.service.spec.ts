@@ -45,6 +45,16 @@ const authenticated: FakeSessionValue = {
   isRefetching: false,
 } as FakeSessionValue;
 
+const impersonating: FakeSessionValue = {
+  data: {
+    user: { id: 'u2', email: 'grace@example.com', name: 'Grace', role: 'user' },
+    session: { id: 's2', impersonatedBy: 'u1' },
+  },
+  error: null,
+  isPending: false,
+  isRefetching: false,
+} as FakeSessionValue;
+
 describe('SessionService', () => {
   it('reflects the atom value present at construction', () => {
     const { atom } = createFakeSessionAtom(authenticated);
@@ -86,6 +96,28 @@ describe('SessionService', () => {
 
     expect(service.isAuthenticated()).toBe(false);
     expect(service.user()).toBeNull();
+  });
+
+  it('isImpersonating is false for a normal authenticated session', () => {
+    const { atom } = createFakeSessionAtom(authenticated);
+    TestBed.configureTestingModule({
+      providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }],
+    });
+
+    const service = TestBed.inject(SessionService);
+
+    expect(service.isImpersonating()).toBe(false);
+  });
+
+  it('isImpersonating is true while the session carries impersonatedBy', () => {
+    const { atom } = createFakeSessionAtom(impersonating);
+    TestBed.configureTestingModule({
+      providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }],
+    });
+
+    const service = TestBed.inject(SessionService);
+
+    expect(service.isImpersonating()).toBe(true);
   });
 
   it('releases the subscription when the injector is destroyed', () => {

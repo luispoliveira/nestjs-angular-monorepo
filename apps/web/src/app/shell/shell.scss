@@ -8,5 +8,38 @@
 }
 
 mat-sidenav {
-  width: 224px;
+  width: 240px;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+mat-sidenav-content {
+  background: var(--mat-sys-surface-container-lowest);
+}
+
+.nav-group-label {
+  padding: 16px 16px 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.active-nav-entry {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  border-radius: 999px;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 0.75rem;
+  font-weight: 600;
 }

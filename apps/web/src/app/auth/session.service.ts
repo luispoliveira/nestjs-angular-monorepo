@@ -19,6 +19,16 @@ export class SessionService {
   readonly isPending = computed(() => this.state().isPending);
   readonly isAuthenticated = computed(() => this.state().data !== null && this.state().data !== undefined);
 
+  /**
+   * True while the current session is an impersonation session started via
+   * `authClient.admin.impersonateUser` — better-auth sets `impersonatedBy`
+   * (the original admin's user id) on the session record while impersonating
+   * (confirmed against better-auth's own `plugins/admin/routes.mjs`).
+   */
+  readonly isImpersonating = computed(
+    () => !!(this.state().data?.session as { impersonatedBy?: string | null } | undefined)?.impersonatedBy,
+  );
+
   constructor() {
     const unsubscribe = this.authClient.useSession.subscribe((value) => {
       this.state.set(value);

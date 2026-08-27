@@ -73,6 +73,13 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
             database: prismaAdapter(database, {
               provider: 'postgresql',
             }),
+            user: {
+              // Reuses `emailVerification.sendVerificationEmail` below to
+              // deliver the confirmation link — better-auth falls back to it
+              // when `sendChangeEmailConfirmation` isn't set (confirmed
+              // against better-auth's own `api/routes/update-user.mjs`).
+              changeEmail: { enabled: true },
+            },
             emailAndPassword: {
               enabled: true,
               requireEmailVerification: true,

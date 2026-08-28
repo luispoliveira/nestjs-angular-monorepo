@@ -1,3 +1,7 @@
+## v1.7.1 (2026-08-28)
+
+**Full Changelog**: https://github.com/luispoliveira/nestjs-angular-monorepo/compare/v1.7.0...v1.7.1
+
 ## v1.7.0 (2026-08-27)
 
 ## What's Changed

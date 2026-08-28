@@ -41,7 +41,22 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 ## Queues (BullMQ)
 
-<!-- Add BullMQ queue edge cases here -->
+### Every app using `Transport.REDIS` must declare `ioredis` itself
+
+`@nestjs/microservices` never imports `ioredis` statically — it resolves the driver lazily at
+runtime (`client/client-redis.js`: `loadPackage('ioredis', ClientRedis.name, () => require('ioredis'))`),
+and lists it as a wildcard peer. So a missing `ioredis` passes `pnpm build`, `check-types`, lint and
+the whole test suite, then fails at boot with `Cannot find module 'ioredis'`.
+
+`apps/worker` and `apps/notifications` ran for a long time without declaring it: `worker` inherited it
+from `bullmq@5`, which pinned `ioredis: 5.10.1` as a hard dependency, and `notifications` got it purely
+from pnpm hoisting. **`bullmq@6` moves `ioredis` to a peer dependency** (alongside `redis`, `pg` and
+`bullmq-otel`, since v6 supports several Redis drivers), so that transitive copy disappears on upgrade.
+
+Rule: if an app calls `app.connectMicroservice({ transport: Transport.REDIS })`, it declares `ioredis`
+in its own `dependencies` — same range across all apps so pnpm resolves a single copy. Verify with
+`node -e "require.resolve('ioredis')"` run **from the app's own directory**, not from the repo root;
+hoisting at the root hides exactly the failure a pruned deploy reproduces.
 
 ---
 

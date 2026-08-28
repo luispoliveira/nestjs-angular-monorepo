@@ -19,10 +19,10 @@
     "@repo/database": "workspace:*"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.5.0",
-    "@testcontainers/postgresql": "^12.0.4",
-    "@types/node": "^26.1.1",
-    "testcontainers": "^12.0.4",
+    "@faker-js/faker": "^10.6.0",
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/node": "^26.4.0",
+    "testcontainers": "^12.1.0",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {

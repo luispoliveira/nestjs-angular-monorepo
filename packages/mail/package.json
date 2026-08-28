@@ -23,16 +23,16 @@
     "@nestjs/core": "^11.1.28"
   },
   "dependencies": {
-    "@getbrevo/brevo": "^5.0.4",
+    "@getbrevo/brevo": "^6.0.3",
     "@repo/shared": "workspace:*",
     "@repo/shared-types": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.28",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.1.1",
-    "jest": "^30.4.2",
-    "ts-jest": "^29.4.11",
+    "@types/node": "^26.4.0",
+    "jest": "^30.5.0",
+    "ts-jest": "^29.4.12",
     "typescript": "^6.0.3"
   },
   "jest": {

@@ -1,0 +1,14 @@
+// Proof of concept: PostgreSQL row-level security for multi-tenant isolation.
+// Not part of the template's production surface. Delete this file (and its
+// migration) if the PoC is rejected.
+//
+// See packages/database/src/rls.ts for the client-side half.
+
+model RlsNote {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  body           String
+
+  @@index([organizationId])
+  @@map("rls_note")
+}

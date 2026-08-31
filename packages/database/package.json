@@ -11,7 +11,8 @@
     "db:push": "prisma db push",
     "dev": "tsc -p tsconfig.build.json --watch",
     "test": "jest --passWithNoTests",
-    "test:cov": "jest --coverage --passWithNoTests"
+    "test:cov": "jest --coverage --passWithNoTests",
+    "test:integration": "jest --config ./test/jest-integration.json"
   },
   "exports": {
     ".": {

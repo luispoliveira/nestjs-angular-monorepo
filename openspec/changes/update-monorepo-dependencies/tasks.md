@@ -19,10 +19,10 @@
 
 ## 3. chore: raise Zod to ~4.6.0 across the workspace
 
-- [ ] 3.1 `pnpm-workspace.yaml`: change the `overrides.zod` entry from `~4.4.3` to `~4.6.0`; verify the file parses by running `pnpm install --lockfile-only`
-- [ ] 3.2 all six apps and `packages/shared`, `packages/shared-types`: update the `zod` dependency from `~4.4.3` to `~4.6.0` in all eight `package.json` files; verify with a repo-wide grep that no `~4.4.3` reference to zod remains
-- [ ] 3.3 repo root: run `pnpm install` then `node scripts/verify-single-zod-version.mjs`; verify it exits zero **and** that the version it prints is on the 4.6 line — an exit code alone does not prove the override took effect
-- [ ] 3.4 repo root: run `pnpm build`, `pnpm check-types` and `pnpm test`; verify the Zod v4 API surface used across `packages/shared-types` and the NestJS DTOs still compiles and validates unchanged
+- [x] 3.1 `pnpm-workspace.yaml`: changed the `overrides.zod` entry from `~4.4.3` to `~4.6.0`; verified the file parses via `pnpm install --lockfile-only` (only the pre-existing `@babel/core` peer warning, unrelated)
+- [x] 3.2 all six apps and `packages/shared`, `packages/shared-types`: updated the `zod` dependency from `~4.4.3` to `~4.6.0` in all eight `package.json` files; a repo-wide grep for `~4.4.3` returns no matches
+- [x] 3.3 repo root: ran `pnpm install` then `node scripts/verify-single-zod-version.mjs`; exits zero and prints "OK: single resolved zod version — 4.6.0" — confirms the override took effect, not just a single stale resolution
+- [x] 3.4 repo root: ran `pnpm build` (12/12), `pnpm check-types` (12/12), `pnpm test` (16/16 tasks, 261 tests) — all pass, Zod v4 API surface (`createZodDto`, `z.email()`, `.meta()`) compiles and validates unchanged. Note: `apps/web`'s production bundle grew ~111 kB (881 kB → 992 kB) — traced to zod's own unpacked package size growing from 4.56 MB (4.4.3) to 6.09 MB (4.6.0), confirmed as a single resolved version (no duplicate-resolution bug like 2.4's bullmq case). This is a real, inherent cost of the new zod version, not a defect in this change; flagged to the user rather than silently absorbed, since bundle size was not a stated acceptance criterion for this change
 - [ ] 3.5 Commit this group using the project `commit` skill (`/commit`)
 
 ## 4. feat: upgrade better-auth to 1.7.3

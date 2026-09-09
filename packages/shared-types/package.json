@@ -17,7 +17,7 @@
     }
   },
   "dependencies": {
-    "zod": "~4.4.3"
+    "zod": "~4.6.0"
   },
   "peerDependencies": {
     "@angular/forms": "^22.0.0"

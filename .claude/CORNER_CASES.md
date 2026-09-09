@@ -58,11 +58,31 @@ in its own `dependencies` — same range across all apps so pnpm resolves a sing
 `node -e "require.resolve('ioredis')"` run **from the app's own directory**, not from the repo root;
 hoisting at the root hides exactly the failure a pruned deploy reproduces.
 
+### Bumping `bullmq`'s patch version in `apps/worker` alone can split the resolved version in two, breaking the build with a structural-typing error
+
+**Symptom:** after bumping only `apps/worker/package.json`'s `bullmq` (e.g. `^6.3.1 → ^6.3.4`) and running a plain `pnpm install`, `pnpm build` fails in `apps/worker` with a TS2345 error whose message is a wall of near-identical `Queue<...>` generic types, bottoming out in `Property 'libName' is protected but type '...' is not a class derived from '...'`. The two types look identical but come from two different install paths in `node_modules/.pnpm/` — one `bullmq@6.3.4`, one `bullmq@6.3.1`.
+
+**Cause:** `@nestjs/bullmq`'s peer range for `bullmq` (`^3 || ^4 || ^5 || ^6`) and `packages/shared`'s peer range (`^5.66.5 || ^6.0.0`) are both wide enough to admit the new version, but a plain `pnpm install` after editing only one `package.json` does not always force pnpm to re-resolve every peer-dependency combination against the new version — it can leave a stale `bullmq@6.3.1` resolution wired into `@nestjs/bullmq`'s peer context alongside the freshly-bumped `bullmq@6.3.4` used directly by `apps/worker`. TypeScript then sees two structurally-similar-but-distinct `Queue` classes and refuses the assignment.
+
+**Fix:** run `pnpm dedupe` after bumping a package that multiple workspaces depend on (directly or via a peer range) — it collapses the two resolutions back to one (`grep -n "^  bullmq@" pnpm-lock.yaml` should show exactly one entry). A plain `pnpm install` is not guaranteed to do this on its own. If a build error names a "duplicate" class assignable to its own definition, suspect two resolved copies of the same package before suspecting an actual breaking API change.
+
 ---
 
 ## Database (Prisma / PrismaPg)
 
 <!-- Add Prisma / DB corner cases here -->
+
+### This template's `init` migration is regenerated in place, not extended — a deliberate exception to "never edit an applied migration"
+
+**Context:** the project rule is "schema changes → new migration, never edit migrations already applied" (see the root `CLAUDE.md`), and it exists to protect *live systems*, where an already-applied migration is a historical record of what actually ran against real data. This repo is a **GitHub template repository**: it is consumed by copy (`Use this template` / `degit`), not by `git merge` or `git pull` from an upstream remote. A project created from the template diverges from it the moment it is created and never receives anything from the template's git history again.
+
+Under that distribution model, an incremental migration added here (e.g. `add_account_issuer`) would reach **zero** consumers: a new project copies whatever `init` looks like on the day it is created, and an already-existing derived project has no git relationship to this repo through which the new migration file could ever arrive.
+
+**Decision:** when a schema correction applies to *every* future consumer of the template (such as aligning `auth.prisma`'s `Account` model with the identity scheme better-auth's installed version actually uses), regenerate the single `20260313155633_init` migration in place instead of adding a second one. This keeps new projects on a one-step history for a schema that is simply correct from the start.
+
+**What this does NOT change:** an already-existing derived project (which has its own independent migration history) still cannot apply this change via a migration file — it never receives one. It needs a documented backfill *procedure* instead (see `openspec/changes/update-monorepo-dependencies/design.md`, decision D4, for the better-auth account-identity example: add the column nullable, backfill by account type, verify no duplicate keys, then add the `NOT NULL` and the unique index).
+
+**Do not** generalize this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies again, because the distribution model that justifies the exception (no consumer ever receives the migration) no longer holds.
 
 ---
 
@@ -85,6 +105,24 @@ hoisting at the root hides exactly the failure a pruned deploy reproduces.
 ## Build / Turborepo / pnpm
 
 <!-- Add build-system gotchas here -->
+
+### `pnpm update-packages` (`ncu -u`) will happily jump to a release candidate or an unsupported major
+
+**Symptom:** running the root `update-packages` script (a bare `npx npm-check-updates -u`, no config) can rewrite `prisma` to a version like `8.0.0-rc.13` — `npm`'s `latest` dist-tag for the `prisma` CLI package currently points at a release candidate even though `@prisma/client`'s `latest` is still on the stable `7.x` line. The same run also proposes `typescript@7.x`, `vitest@5.x`, and `@nestjs/*@12.x`, none of which this stack's other dependencies accept yet.
+
+**Fix:** `.ncurc.json` at the repo root carries a `reject` list (`typescript`, `prisma`, `@prisma/client`, `vitest`, `@nestjs/*`, `ioredis`) that `npm-check-updates` reads automatically — do not remove an entry without re-checking its condition below. Because this repo is a GitHub template repository (consumed by copy, not by git merge), this file travels into every project created from the template along with the script it guards.
+
+Deferred, with the condition that would unblock each:
+
+| Package | Currently blocked at | Blocked by | Unblock when |
+| --- | --- | --- | --- |
+| `typescript` | `^6.0.3` | `@angular/compiler-cli`/`@angular/build` require `>=6.0 <6.1`; `typescript-eslint` requires `<6.1.0`; `ts-jest` requires `<7`; `@thallesp/nestjs-better-auth` requires `^5.9.2 \|\| ^6.0.0` | Angular and `typescript-eslint` both publish support for TypeScript 7 |
+| `prisma` / `@prisma/client` | `^7.10.0` | `npm`'s `latest` dist-tag for the `prisma` CLI serves an 8.0.0 release candidate; `@prisma/client` has no stable 8.x at all | `@prisma/client` publishes a stable 8.x release |
+| `vitest` | `^4.0.8` | `@angular/build@22.1.7` declares a peer of `vitest ^4.0.8` | `@angular/build` widens its peer range to accept Vitest 5 |
+| `@nestjs/*` (core, common, config, microservices, platform-express, schedule, bullmq, cli, schematics, testing) | `^11.x` | Four dependencies cap their peer range at NestJS 11: `nestjs-zod@5.5.0` (`@nestjs/common ^10\|\|^11`, `@nestjs/swagger ^7.4.2\|\|^8\|\|^11`), `@sentry/nestjs@10.74.0` (`@nestjs/core ^8..^11`), `@nestjs/throttler@6.5.0` (`@nestjs/core ^7..^11`), `@nest-lab/throttler-storage-redis@1.2.0` (`@nestjs/core ^7..^11`) | All four of the packages above publish a release supporting NestJS 12 — they track the same major, so they are likely to clear around the same time, turning this into one coordinated upgrade rather than four separate ones |
+| `ioredis` | `^5.11.1` | No formal peer conflict, but `bullmq` bundles its own `ioredis` and a major-version split between the two has not been investigated | A dedicated investigation confirms compatibility with `bullmq`'s bundled `ioredis` |
+
+See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full analysis.
 
 ---
 

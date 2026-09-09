@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseModule, DatabaseService } from '@repo/database';

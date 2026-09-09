@@ -27,10 +27,10 @@
 
 ## 4. feat: upgrade better-auth to 1.7.3
 
-- [ ] 4.1 `apps/auth`: bump `better-auth` and `@better-auth/prisma-adapter` to 1.7.3 and `@thallesp/nestjs-better-auth` to 2.8.0; verify `pnpm install` resolves with no unmet peer warning for `zod` (the reason group 3 comes first)
-- [ ] 4.2 `apps/web`: bump `better-auth` to 1.7.3 so the client and server stay on one version; verify `pnpm --filter web build` succeeds
-- [ ] 4.3 `apps/auth`: verify the existing `betterAuth()` configuration in `app.module.ts` still type-checks against 1.7.3 — the `twoFactor()` and `admin()` plugins and the `advanced.disableOriginCheck` setting are the surfaces to confirm; run `pnpm --filter auth check-types`
-- [ ] 4.4 `apps/auth`: run the existing unit and integration suites (`pnpm --filter auth test` and `test:integration`); verify no regression before the schema work begins
+- [x] 4.1 `apps/auth`: bumped `better-auth` and `@better-auth/prisma-adapter` to 1.7.3 and `@thallesp/nestjs-better-auth` to 2.8.0; `pnpm install` resolves with no unmet peer warning for `zod` (only the pre-existing, unrelated `@babel/core` warning) — confirms doing the zod bump first (group 3) was necessary
+- [x] 4.2 `apps/web`: bumped `better-auth` to 1.7.3 so the client and server stay on one version; `pnpm --filter web build` succeeds (bundle size unchanged from the 3.4 zod-driven figure, as expected)
+- [x] 4.3 `apps/auth`: verified the existing `betterAuth()` configuration in `app.module.ts` still type-checks against 1.7.3 — `pnpm --filter auth check-types` passes cleanly (no errors), covering the `twoFactor()`/`admin()` plugins and `advanced.disableOriginCheck`
+- [x] 4.4 `apps/auth`: ran the existing unit and integration suites — `pnpm --filter auth test` (15/15 pass, no regression) and `pnpm --filter auth test:integration`. The integration suite failed to even load before any fix (pre-existing, unrelated to this change — pure-ESM `@faker-js/faker` under a CommonJS Jest config, see CORNER_CASES.md); converted `jest-integration.json` to the same ESM setup already used by `jest-e2e.json` and added a missing `@jest/globals` import that the ESM conversion exposed. Now 7/7 pass. `test:e2e` remains blocked by an unrelated local Docker Mongo volume permission error (`WiredTiger.wt: Operation not permitted`) — a local environment issue, not a code or dependency defect; flagged for tasks 5.6/7.1/7.3
 - [ ] 4.5 Commit this group using the project `commit` skill (`/commit`)
 
 ## 5. feat: model better-auth account identity in the schema

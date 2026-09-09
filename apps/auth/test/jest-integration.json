@@ -1,12 +1,23 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "extensionsToTreatAsEsm": [".ts"],
+  "moduleFileExtensions": ["js", "json", "ts", "mjs"],
   "rootDir": "..",
   "testRegex": "\\.integration\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": [
+    "^.+\\.tsx?$": [
       "ts-jest",
       {
-        "tsconfig": "<rootDir>/tsconfig.test.json"
+        "useESM": true,
+        "tsconfig": {
+          "module": "ESNext",
+          "moduleResolution": "bundler",
+          "resolvePackageJsonExports": true,
+          "emitDecoratorMetadata": true,
+          "experimentalDecorators": true,
+          "allowSyntheticDefaultImports": true,
+          "strict": true,
+          "target": "ES2022"
+        }
       }
     ]
   },

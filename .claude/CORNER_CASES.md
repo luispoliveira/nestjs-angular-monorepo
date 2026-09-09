@@ -128,6 +128,14 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 
 ## Testing
 
+### `apps/auth`'s `test:integration` couldn't load `@repo/testing-utils` at all — pure-ESM `@faker-js/faker` under a plain CommonJS Jest config
+
+**Symptom:** `pnpm --filter auth test:integration` fails before any test runs: `Must use import to load ES Module: .../@faker-js/faker/dist/index.js`, thrown from `packages/testing-utils/dist/src/factories/user.factory.js`'s `require("@faker-js/faker")`.
+
+**Cause:** `@faker-js/faker` ships `"type": "module"` with no CommonJS build at all (checked directly against its `package.json`). `packages/testing-utils` compiles to CommonJS, so its compiled `user.factory.js` calls `require()` on a package that has no `require`-able entry point — Node throws `ERR_REQUIRE_ESM` regardless of any `transformIgnorePatterns` tweak, because the `.js` file has already been compiled to a static `require()` call; no Jest transform step can retroactively turn that into an `import()`. `apps/auth/test/jest-integration.json` ran plain CommonJS Jest, unlike `jest-e2e.json`, which was already ESM-mode and unaffected. Not caused by any dependency version bump — `@faker-js/faker` was already pinned at `^10.6.0` (pure ESM) before this repo's most recent dependency work; `test:integration` isn't wired into any CI workflow, so nothing had caught it.
+
+**Fix:** converted `apps/auth/test/jest-integration.json` to the same real-ESM Jest setup already used by `jest-e2e.json` (`extensionsToTreatAsEsm: [".ts"]`, `ts-jest` with `useESM: true` and an inline ESNext/bundler tsconfig), and prefixed the `test:integration` script with `NODE_OPTIONS='--experimental-vm-modules'` — under Node ≥24.9 (this repo runs 24.19), Jest's native ESM execution mode can `require(esm)` a CJS module that itself requires a pure-ESM package; plain CJS Jest mode cannot. Doing this surfaced a second, previously-hidden issue in the same file: under real ESM, Jest's globals (`jest.fn()`, etc.) aren't auto-injected — `test/users.integration.ts` needed an explicit `import { jest } from '@jest/globals';`. If another package ever needs a pure-ESM-only dependency under a Jest suite that still runs in CJS mode, converting that suite's config to this same ESM pattern is the fix, not a `transformIgnorePatterns` change.
+
 ### `apps/web`'s Angular CLI refuses to run under the shell's default active Node version
 
 **Symptom:** `pnpm --filter web test` (or `build`/`lint`) fails immediately with `The Angular CLI requires a minimum Node.js version of v22.22.3 or v24.15.0 or v26.0.0` even though a correct Node version is installed on the machine — the shell's currently-active `node -v` just isn't one of them (e.g. `v24.14.1`, one patch below the `v24.15.0` floor).

@@ -76,4 +76,5 @@ rules:
     - Always include explicit test-writing tasks (unit and/or integration) after each feature task
     - Use conventional commit format in task titles (feat:, fix:, chore:, refactor:, test:)
     - Order tasks so dependencies come first (migrations before services, services before controllers)
+    - Group related tasks under a heading, and close every group with a final task that commits that group's work using the project `commit` skill (`/commit`) — it gate-checks build, lint, check-types and tests, then waits for user approval before committing
     - Include a final task for end-to-end smoke testing or integration verification

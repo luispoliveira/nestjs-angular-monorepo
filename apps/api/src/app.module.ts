@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ClientsModule } from '@nestjs/microservices';
+import { DatabaseSeederModule } from '@repo/database';
 import {
   MicroserviceAuthGuard,
   MicroserviceUtil,
@@ -19,6 +20,7 @@ import { apiEnvSchema } from './env';
       throttlerRedisUrl: process.env.REDIS_URL,
     }),
     ClientsModule.registerAsync([MicroserviceUtil.registerAuthService()]),
+    DatabaseSeederModule,
   ],
   controllers: [AppController],
   providers: [

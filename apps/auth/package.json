@@ -36,7 +36,7 @@
     "@thallesp/nestjs-better-auth": "^2.8.0",
     "better-auth": "^1.7.3",
     "ioredis": "^5.11.1",
-    "nestjs-pino": "^4.6.1",
+    "nestjs-pino": "^5.1.0",
     "pg": "^8.23.0",
     "pino-http": "^11.0.0",
     "pino-pretty": "^13.1.3",

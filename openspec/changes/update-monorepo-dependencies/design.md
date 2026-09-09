@@ -2,7 +2,7 @@
 
 See `proposal.md` — Why. The constraints that shape the approach:
 
-- **Distribution model.** This repo is a GitHub *template repository*. Derived projects are copies with no upstream remote, so nothing produced here reaches them over git. Anything a derived project must *do* has to be expressed as a procedure, not as a file they will receive.
+- **Distribution model.** This repo is a GitHub *template repository*. Derived projects are copies with no upstream remote, so nothing produced here reaches them over git. Anything a derived project must *do* has to be expressed as a procedure, not as a file they will receive. (This mattered directly for D1 below, before that decision was withdrawn — kept in mind for any future template-wide schema correction.)
 - **Peer-range reality.** Four of the headline upgrades are blocked by peer requirements already present in the workspace, not by taste:
 
   | Upgrade | Declared by | Requirement | Verdict |
@@ -19,63 +19,40 @@ See `proposal.md` — Why. The constraints that shape the approach:
 
 - **Prisma's dist-tags.** `prisma` publishes `latest = 8.0.0-rc.13` while `@prisma/client` publishes `latest = 7.10.0`. This is not a peer conflict — it is a channel hazard. A bare `ncu -u` splits the CLI from the client across a major version.
 - **Zod is force-pinned.** `pnpm-workspace.yaml` carries `overrides: zod: '~4.4.3'`, which resolves to `>=4.4.3 <4.5.0`. better-auth `1.7.3` depends on `zod ^4.5.4`. The override currently *contradicts* the library it is meant to support.
-- **Schema drift already exists.** `apps/auth` runs better-auth 1.7.2 while `packages/database/prisma/auth.prisma` models `account` without `issuer`. The change corrects a present inconsistency, it does not introduce one.
-- **`apps/auth` uses only `twoFactor()` and `admin()`** plus optional Google social. Of better-auth 1.7's schema changes (protected resources, SCIM, DPoP, device authorization, `oauthClient`, organization team counters), **only account identity applies**. No SCIM reprovisioning, no OAuth client data move, no maintenance window.
+- **The `account` schema question was investigated and closed.** The original exploration found better-auth 1.7.0–1.7.2 required an `Account.issuer` column that `auth.prisma` lacked. Verifying the 1.7.3 upgrade during implementation found that better-auth's own team reverted this requirement before 1.7.3 shipped — confirmed by source diff, by 1.7.3's own schema-diagnostic tool, by the official release notes, and empirically against the real `signUpEmail` API on the local test database. Full evidence chain in `proposal.md` — "Investigated and not carried forward." `auth.prisma` needs no change. Decisions D1, D2, and D4 below are retained in their original, superseded form for anyone tracing the same investigation from the same starting point — each is marked withdrawn at its own heading.
+- **`apps/auth` uses only `twoFactor()` and `admin()`** plus optional Google social. Not load-bearing for this change now that the schema question is closed, but worth recording: of better-auth 1.7's schema changes generally (protected resources, SCIM, DPoP, device authorization, `oauthClient`, organization team counters), none apply to this app's plugin surface.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
 - Make `pnpm update-packages` safe to run unattended, in this repo and in every project copied from it.
-- Bring `auth.prisma` back into agreement with the better-auth version already installed.
-- Give derived projects a correct, verified backfill procedure they can execute against their own data.
-- Keep the risky work (schema) reviewable separately from the routine work (version bumps).
+- Upgrade better-auth to the version this workspace should run, verifying compatibility with the installed schema rather than assuming a doc written for the 1.7 series still describes the 1.7.3 release.
+- Keep the reviewable core (better-auth + Zod) separate from the routine work (safe version bumps) and the isolated major (`nestjs-pino`).
 
 **Non-Goals:**
 
 - Choosing the *content* of the block list as a permanent policy. The list is a snapshot with stated release conditions; it is expected to shrink.
-- Automating the derived-project backfill. The template cannot see downstream data; it supplies the procedure and the pre-check.
 - Publishing user-facing upgrade documentation. Deferred (see `proposal.md` — Non-goals).
+- Any `auth.prisma` schema change. Investigated and found unnecessary — see Context above.
 
 ## Decisions
 
-### D1 — Regenerate the `init` migration instead of adding an incremental one
+### D1 — WITHDRAWN: Regenerate the `init` migration instead of adding an incremental one
 
-**Involves:** `packages/database/prisma/migrations/`, `packages/database/prisma/auth.prisma`.
+**Status:** withdrawn. Retained here, unedited from the original proposal, because the reasoning is still valid *if* a genuine template-wide schema correction is ever needed — only its premise (that this change requires one) turned out to be false.
 
-The repo has exactly one migration, `20260313155633_init` (103 lines). It will be regenerated to include `issuer` and the compound unique index, rather than adding an `add_account_issuer` migration on top.
+> The repo has exactly one migration, `20260313155633_init` (103 lines). It would be regenerated to include a schema correction, rather than adding an incremental migration on top.
+>
+> *Why:* the template is consumed by copy. A derived project has no upstream remote, so an incremental migration would be delivered to nobody, while leaving every *new* project with a two-step history for a schema that could be correct from the start.
+>
+> *This would deliberately contradict the project rule "new migration, never edit an already-applied migration."* That rule governs live systems; a template is a seed. Such an exception belongs in `.claude/CORNER_CASES.md` specifically so a later maintainer applying the rule literally does not revert it — not applied in this change, since no migration was regenerated.
 
-*Why:* the template is consumed by copy. A derived project has no upstream remote, so an incremental migration would be delivered to nobody, while leaving every *new* project with a two-step history for a schema that could be correct from the start. The migration file is not the delivery vehicle for downstream projects — the procedure in D4 is.
+No `auth.prisma` or migration file was touched in this change.
 
-*Alternative considered:* incremental migration, preserving history. Rejected — it optimises for a consumer that does not exist under this distribution model.
+### D2 — WITHDRAWN: Data model change: `Account.issuer`
 
-*This deliberately contradicts the project rule "new migration, never edit an already-applied migration."* That rule governs live systems; a template is a seed. The exception is recorded in `.claude/CORNER_CASES.md` (D6) specifically so a later maintainer applying the rule literally does not revert it.
-
-### D2 — Data model change: `Account.issuer`
-
-**Involves:** `packages/database/prisma/auth.prisma`.
-
-```prisma
-model Account {
-  id                    String    @id
-  issuer                String                 // added — required
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // ... unchanged fields ...
-
-  @@unique([issuer, accountId])                // added
-  @@index([userId])
-  @@map("account")
-}
-```
-
-`providerId` is retained — better-auth 1.7 keeps it alongside the new identity pair; `issuer` does not replace it.
-
-Note that `auth.prisma` is normally owned by better-auth and not hand-edited. The field set here is not invented: it is what better-auth 1.7's own table definition declares (`issuer` required, unique compound index on `issuer` + `accountId`). Generating it with better-auth's own CLI (`npx auth generate`) and reconciling the output with the existing file is preferred over hand-writing the block.
-
-*Auth/authorization impact:* none at the role or guard level. `RoleEnum`, `AuthGuard`, `MicroserviceAuthGuard`, and the `admin()`/`twoFactor()` plugin surfaces are unaffected. The change is confined to how an account row is keyed. No new REST endpoint, event pattern, message pattern, or queue job.
+**Status:** withdrawn. The `issuer` field and its unique compound index were specific to better-auth 1.7.0–1.7.2 and were removed by better-auth before 1.7.3 — see Context above and `proposal.md`. `auth.prisma`'s `Account` model is unchanged by this decision, in this change.
 
 ### D3 — Zod to `~4.6.0`, treated as a prerequisite of the better-auth bump
 
@@ -87,35 +64,37 @@ The bump touches eight `package.json` files **and** the workspace override. Miss
 
 *Why grouped with better-auth rather than with the safe bumps:* it is a hard dependency of better-auth 1.7.3. Splitting them would produce an intermediate commit whose dependency graph is unsatisfiable.
 
-### D4 — The backfill is a procedure, not a migration
+*Observed side effect:* `apps/web`'s production bundle grew ~111 kB after this bump — traced to zod's own unpacked package size growing between 4.4.3 and 4.6.0, confirmed as a single resolved copy (not a duplicate-resolution bug). Not a defect in this change; flagged since bundle size was not a stated acceptance criterion.
 
-**Involves:** derived projects; captured here and referenced from `tasks.md`.
+### D4 — WITHDRAWN: The backfill is a procedure, not a migration
 
-The template repo has no seeded accounts, so it executes nothing. What it owes downstream is a correct procedure. Per better-auth's 1.7 upgrade guide:
+**Status:** withdrawn along with D2. Retained here, unedited, for anyone re-deriving the same concern from better-auth's 1.7.0–1.7.2 documentation, so they can see it was considered and why it does not apply to 1.7.3.
 
-**Step 0 — pre-check for collisions (must run before anything else):**
+> The template repo has no seeded accounts, so it would execute nothing. What it would owe downstream is a correct procedure. Per better-auth's 1.7 upgrade guide (describing the 1.7.0–1.7.2 `issuer` requirement, since reverted):
+>
+> **Step 0 — pre-check for collisions (must run before anything else):**
+>
+> ```sql
+> SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;
+> ```
+>
+> Any rows returned must be resolved first. better-auth 1.7.0–1.7.2 rejected an account lookup that matched more than one row.
+>
+> **Step 1 — add `issuer` as nullable.** Keep the existing `accountId` column.
+>
+> **Step 2 — populate both fields by account type:**
+>
+> | Account type | `issuer` | `accountId` |
+> | --- | --- | --- |
+> | Credential (password) | `local:credential` | the linked `user` row's `id` |
+> | Provider with an issuer | the provider's exact trusted issuer | unchanged |
+> | OAuth provider without an issuer | `local:oauth:<encoded providerId>` | unchanged |
+>
+> **Step 3 — verify, then constrain.** Confirm every row has both fields, make `issuer` `NOT NULL`, add the unique index on `(issuer, accountId)`.
+>
+> The credential row rewrite would have been the step most easily missed: `accountId` becomes the user's `id`, making this a data migration, not a column addition.
 
-```sql
-SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;
-```
-
-Any rows returned must be resolved first. better-auth rejects an account lookup that matches more than one row.
-
-**Step 1 — add `issuer` as nullable.** Keep the existing `accountId` column.
-
-**Step 2 — populate both fields by account type:**
-
-| Account type | `issuer` | `accountId` |
-| --- | --- | --- |
-| Credential (password) | `local:credential` | the linked `user` row's `id` |
-| Provider with an issuer | the provider's exact trusted issuer | unchanged |
-| OAuth provider without an issuer | `local:oauth:<encoded providerId>` | unchanged |
-
-**Step 3 — verify, then constrain.** Confirm every row has both fields, make `issuer` `NOT NULL`, add the unique index on `(issuer, accountId)`.
-
-The credential row rewrite is the step most easily missed: `accountId` becomes the user's `id`, so this is a data migration, not a column addition. Any derived project that has enabled Google social must use Google's issuer for those rows.
-
-*Alternative considered:* ship the backfill as a runnable SQL script in the template. Rejected — it cannot be correct without knowing which providers a given project enabled, and a script that looks authoritative but is wrong for the reader's data is worse than a procedure they must read.
+If better-auth ever reintroduces an account-identity change in a future release this workspace upgrades to, this procedure — or whatever the then-current upgrade guide specifies — is the starting point, not a fresh investigation from zero.
 
 ### D5 — Block list as tool configuration, not version pins
 
@@ -135,6 +114,8 @@ The credential row rewrite is the step most easily missed: `accountId` becomes t
 
 *Why not `pnpm.overrides`:* overrides suppress the peer warnings that are the actual signal here. The goal is to *respect* the constraints, not silence them.
 
+*Implementation note:* `.ncurc.json` is parsed and passed straight through as CLI options — an inline `$comment`/rationale key inside it makes `npm-check-updates` fail with "unknown option". The rationale for each rejection lives in `CORNER_CASES.md` instead; the JSON file carries only the `reject` array itself.
+
 ### D6 — Three branches, not one
 
 **Involves:** all affected packages.
@@ -143,34 +124,32 @@ The credential row rewrite is the step most easily missed: `accountId` becomes t
   feature/deps-safe-bump        low risk, no behavior change
         |                       (safe versions + .ncurc.json)
         v
-  feature/better-auth-1.7.3     zod + better-auth + schema + migration
-        |                       (the reviewable core)
+  feature/better-auth-1.7.3     zod + better-auth
+        |                       (the reviewable core — no schema work, see D1/D2/D4)
         v
   feature/nestjs-pino-5         isolated major, trivially revertible
 ```
 
 Sequential rather than parallel: the safe bump lands the block list first, so the later branches cannot reintroduce a rejected version. `nestjs-pino` 5 requires `pino ^10` and Node `>=22.12` — the repo is on Node 24.19, so the engine is satisfied.
 
-`.claude/CORNER_CASES.md` gains two entries, both in the first branch: the deferred upgrades (under a build/tooling heading) and the migration-regeneration exception (under the database heading).
+`.claude/CORNER_CASES.md` gains entries in the first branch (deferred upgrades, under a build/tooling heading) and in the second (the pre-existing `test:integration` ESM fix, and the `bullmq`/`pnpm dedupe` gotcha from the first branch).
 
 ## Risks / Trade-offs
 
-- **Regenerated `init` breaks local developer databases** → Prisma reports drift and requires a reset. Acceptable: local DBs are disposable here (`pnpm docker:up`). Called out explicitly in `tasks.md` rather than left to be discovered.
-- **A derived project applies the new schema without the backfill** → the `NOT NULL` on `issuer` fails, or the unique index rejects the data. This is a loud failure, not a silent one, which is the preferable failure mode. The pre-check in D4 catches it earlier.
-- **The credential `accountId` rewrite is skipped** → accounts survive the migration but stop resolving at sign-in. This is the sharpest edge in the whole change; it is called out in both D4 and the spec's scenarios.
 - **The Zod override is updated but an app manifest is missed** → two resolved versions, `instanceof` identity breaks silently across packages. Mitigated by `verify-single-zod-version.mjs` as a gating step, checking the printed version and not just the exit code.
 - **`.ncurc.json` blocks an upgrade long after its cause is gone** → each entry states its release condition, so the list is auditable. Accepted trade-off: it still requires someone to look.
 - **Deferring NestJS 12 accumulates upgrade debt** → the four blockers are likely to clear at similar times, since they are all tracking the same major. When they do, the upgrade becomes a single coordinated change rather than four.
 - **`@sentry/nestjs` 11 is in beta** → not adopted; the safe bump takes 10.74.0, the newest stable.
+- **A future maintainer re-reads the original `1-7-upgrade-guide.mdx` and re-proposes the `issuer` migration** → the withdrawn D1/D2/D4 decisions and `proposal.md`'s evidence chain are kept intact (not deleted) specifically so this question resolves by reading, not by re-investigating.
 
 ## Migration Plan
 
-1. **`feature/deps-safe-bump`** — safe versions, `.ncurc.json`, `CORNER_CASES.md` entries. Verify `pnpm update-packages` no longer proposes a rejected version. Full build, lint, type-check, tests.
-2. **`feature/better-auth-1.7.3`** — Zod across nine locations, then better-auth packages, then `auth.prisma`, then regenerate the migration. Reset the local database, migrate, and exercise sign-up and sign-in end to end.
+1. **`feature/deps-safe-bump`** — safe versions, `.ncurc.json`, `CORNER_CASES.md` entries for the deferred upgrades. Verify `pnpm update-packages` no longer proposes a rejected version. Full build, lint, type-check, tests.
+2. **`feature/better-auth-1.7.3`** — Zod across nine locations, then better-auth packages. Verify `apps/auth`'s config still type-checks and its unit/integration suites pass; fix the pre-existing `test:integration` ESM defect uncovered along the way.
 3. **`feature/nestjs-pino-5`** — the major alone. Confirm log output and correlation-ID threading still behave.
 
-**Rollback:** each branch reverts independently. Branch 2 additionally requires a local database reset on revert, since the regenerated migration will no longer match. No production system is involved — the repo holds no account data.
+**Rollback:** each branch reverts independently. No production system is involved — the repo holds no account data, and no schema changed.
 
 ## Open Questions
 
-- Whether to publish the D4 backfill procedure as a user-facing document for derived projects (`docs/`), or leave it in `design.md`. Deferrable: it changes no spec, no approach, and no task in this change.
+None outstanding. The one open question from the original design (whether to publish a derived-project backfill guide) is moot now that no backfill is needed.

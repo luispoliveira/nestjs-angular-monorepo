@@ -72,17 +72,17 @@ hoisting at the root hides exactly the failure a pruned deploy reproduces.
 
 <!-- Add Prisma / DB corner cases here -->
 
-### This template's `init` migration is regenerated in place, not extended — a deliberate exception to "never edit an applied migration"
+### If a future schema correction must reach every template consumer, regenerate `init` — not a currently-applied exception
 
 **Context:** the project rule is "schema changes → new migration, never edit migrations already applied" (see the root `CLAUDE.md`), and it exists to protect *live systems*, where an already-applied migration is a historical record of what actually ran against real data. This repo is a **GitHub template repository**: it is consumed by copy (`Use this template` / `degit`), not by `git merge` or `git pull` from an upstream remote. A project created from the template diverges from it the moment it is created and never receives anything from the template's git history again.
 
-Under that distribution model, an incremental migration added here (e.g. `add_account_issuer`) would reach **zero** consumers: a new project copies whatever `init` looks like on the day it is created, and an already-existing derived project has no git relationship to this repo through which the new migration file could ever arrive.
+Under that distribution model, an incremental migration added here would reach **zero** consumers: a new project copies whatever `init` looks like on the day it is created, and an already-existing derived project has no git relationship to this repo through which the new migration file could ever arrive.
 
-**Decision:** when a schema correction applies to *every* future consumer of the template (such as aligning `auth.prisma`'s `Account` model with the identity scheme better-auth's installed version actually uses), regenerate the single `20260313155633_init` migration in place instead of adding a second one. This keeps new projects on a one-step history for a schema that is simply correct from the start.
+**Policy, not yet exercised:** if a schema correction is ever needed that applies to *every* future consumer of the template, regenerate the single `20260313155633_init` migration in place instead of adding a second one — that keeps new projects on a one-step history for a schema that is simply correct from the start. This was evaluated concretely for a better-auth account-identity change during the `update-monorepo-dependencies` change and **not applied**: the investigation found better-auth had reverted that schema requirement before the version this workspace upgraded to, so `auth.prisma` needed no correction. See `openspec/changes/update-monorepo-dependencies/design.md` (decisions D1/D2/D4, marked withdrawn) and `proposal.md`'s evidence chain for that specific case, kept for anyone re-deriving the same question later.
 
-**What this does NOT change:** an already-existing derived project (which has its own independent migration history) still cannot apply this change via a migration file — it never receives one. It needs a documented backfill *procedure* instead (see `openspec/changes/update-monorepo-dependencies/design.md`, decision D4, for the better-auth account-identity example: add the column nullable, backfill by account type, verify no duplicate keys, then add the `NOT NULL` and the unique index).
+**What this would NOT change, if ever exercised:** an already-existing derived project (which has its own independent migration history) still could not receive such a change via a migration file — it never receives one. It would need a documented backfill *procedure* instead.
 
-**Do not** generalize this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies again, because the distribution model that justifies the exception (no consumer ever receives the migration) no longer holds.
+**Do not** apply this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies, because the distribution model that would justify the exception (no consumer ever receives the migration) does not hold for it.
 
 ---
 

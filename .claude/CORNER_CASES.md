@@ -31,6 +31,16 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 **Fix:** better-auth derives the `Secure` prefix from `advanced.useSecureCookies`, else from whether `baseURL` (i.e. `BETTER_AUTH_URL`) itself starts with `https://`, else from `isProduction` — **never** from `X-Forwarded-Proto` or any other proxy header. Set `BETTER_AUTH_URL` to the actual public `https://` origin (e.g. `https://auth.example.com/api/auth`); a plain-`http://` or container-internal value here silently drops the `Secure` prefix no matter how the proxy in front of it is configured. Verified against a real `Set-Cookie` header from a running `apps/auth` instance with `BETTER_AUTH_URL=https://…`: `__Secure-better-auth.session_token=…; Secure; SameSite=Lax; Domain=…`.
 
+### better-auth 1.7.3 validates the Prisma schema at startup by default and rejects auth requests on any mismatch
+
+**Symptom:** upgrading from better-auth 1.7.2 to 1.7.3 with no other code change causes every request that touches the `twoFactor()` plugin (and, by extension, most auth flows once that plugin is registered) to fail with `Prisma schema mismatch — Missing columns: twoFactor.verified, twoFactor.failedVerificationCount, twoFactor.lockedUntil`.
+
+**Cause:** these three columns are not new — `@better-auth/core`'s `two-factor/schema.ts` declares them identically in 1.7.2 and 1.7.3 (confirmed by diffing the installed packages), and `auth.prisma`'s `TwoFactor` model never had them. What's new in 1.7.3 is the feature itself: *"Enabled schema validation during initialization by default, including in production, and rejected authentication requests on detected mismatches"* (1.7.3 release notes). 1.7.2 silently tolerated the gap since better-auth marks all three fields `required: false`; 1.7.3 now checks the Prisma client's `_runtimeDataModel` against every registered plugin's expected fields and throws on any that are absent, regardless of whether that field is actually required.
+
+**Fix:** this is a genuine, previously-latent gap, not a reverted feature like the `Account.issuer` case below — add the missing columns. Because all three are optional/defaulted on better-auth's side (`verified: Boolean? @default(true)`, `failedVerificationCount: Int? @default(0)`, `lockedUntil: DateTime?`), this is purely additive: no uniqueness constraint, no NOT NULL, no data rewrite, safe even for a project with existing `twoFactor` rows. **Do not stop at editing `auth.prisma` and regenerating the migration** — see the `pnpm db:generate` / `pnpm build` entry under Database above; skipping the rebuild step reproduces the exact same "missing columns" error even after the database and the schema source are both already correct.
+
+If a future better-auth upgrade reports a similar mismatch for a different plugin, check whether the plugin's own schema definition actually changed between versions (a real new requirement) before assuming it did — as with `Account.issuer`, better-auth sometimes reverts a schema change between versions, and the two failure modes look identical from the error message alone. Diff the installed package's schema source between versions before writing a migration.
+
 ### `*` means opposite things to `enableCors` and to `trustedOrigins`
 
 **Symptom:** a `CORS_ORIGIN`/origin-allowlist value of `*` looks like it should behave the same way in every place it's consumed, but it doesn't — in one place it silently blocks everything, in the other it silently trusts everything.
@@ -72,17 +82,25 @@ hoisting at the root hides exactly the failure a pruned deploy reproduces.
 
 <!-- Add Prisma / DB corner cases here -->
 
-### This template's `init` migration is regenerated in place, not extended — a deliberate exception to "never edit an applied migration"
+### `pnpm db:generate` alone is not enough after editing `auth.prisma` — `packages/database` must also be rebuilt
+
+**Symptom:** after editing `packages/database/prisma/auth.prisma` and running `pnpm db:generate`, a Prisma-backed feature (e.g. better-auth's own runtime schema validation, new in 1.7.3 — see the Authentication section) still reports the *old* schema, even though the freshly generated `packages/database/generated/prisma/**/*.ts` source on disk is correct and the live database has the new columns.
+
+**Cause:** Prisma 7's `provider = "prisma-client"` generator (unlike the old `prisma-client-js`) emits TypeScript **source**, not compiled JS, into `generated/prisma/`. `packages/database`'s own package entry point (`dist/src/index.js`, built by `tsc -p tsconfig.build.json`) re-exports from `../generated/prisma/client` — a path resolved *relative to `dist/src/`*, i.e. `dist/generated/prisma/client.js`, a **separately compiled copy** produced by `packages/database`'s own build step, not the `generated/prisma/*.ts` source tree that `prisma generate` just refreshed. `pnpm db:generate` never touches `dist/`; only `pnpm build` (or `pnpm --filter @repo/database build`) does.
+
+**Fix:** always run `pnpm build` for `packages/database` after `pnpm db:generate` whenever `auth.prisma` (or any Prisma schema) changes, before any consumer (`apps/auth`, tests, a running app) can see the new fields. Verify directly if in doubt: `grep -c "<new field name>" packages/database/dist/generated/prisma/internal/class.js` — zero means the compiled copy is stale regardless of what the source or the live database say. This bit twice in the same investigation: first the live-DB reset alone didn't fix a schema-mismatch error from better-auth's new 1.7.3 validation, and only rebuilding `packages/database` did.
+
+### If a future schema correction must reach every template consumer, regenerate `init` — not a currently-applied exception
 
 **Context:** the project rule is "schema changes → new migration, never edit migrations already applied" (see the root `CLAUDE.md`), and it exists to protect *live systems*, where an already-applied migration is a historical record of what actually ran against real data. This repo is a **GitHub template repository**: it is consumed by copy (`Use this template` / `degit`), not by `git merge` or `git pull` from an upstream remote. A project created from the template diverges from it the moment it is created and never receives anything from the template's git history again.
 
-Under that distribution model, an incremental migration added here (e.g. `add_account_issuer`) would reach **zero** consumers: a new project copies whatever `init` looks like on the day it is created, and an already-existing derived project has no git relationship to this repo through which the new migration file could ever arrive.
+Under that distribution model, an incremental migration added here would reach **zero** consumers: a new project copies whatever `init` looks like on the day it is created, and an already-existing derived project has no git relationship to this repo through which the new migration file could ever arrive.
 
-**Decision:** when a schema correction applies to *every* future consumer of the template (such as aligning `auth.prisma`'s `Account` model with the identity scheme better-auth's installed version actually uses), regenerate the single `20260313155633_init` migration in place instead of adding a second one. This keeps new projects on a one-step history for a schema that is simply correct from the start.
+**Policy, not yet exercised:** if a schema correction is ever needed that applies to *every* future consumer of the template, regenerate the single `20260313155633_init` migration in place instead of adding a second one — that keeps new projects on a one-step history for a schema that is simply correct from the start. This was evaluated concretely for a better-auth account-identity change during the `update-monorepo-dependencies` change and **not applied**: the investigation found better-auth had reverted that schema requirement before the version this workspace upgraded to, so `auth.prisma` needed no correction. See `openspec/changes/update-monorepo-dependencies/design.md` (decisions D1/D2/D4, marked withdrawn) and `proposal.md`'s evidence chain for that specific case, kept for anyone re-deriving the same question later.
 
-**What this does NOT change:** an already-existing derived project (which has its own independent migration history) still cannot apply this change via a migration file — it never receives one. It needs a documented backfill *procedure* instead (see `openspec/changes/update-monorepo-dependencies/design.md`, decision D4, for the better-auth account-identity example: add the column nullable, backfill by account type, verify no duplicate keys, then add the `NOT NULL` and the unique index).
+**What this would NOT change, if ever exercised:** an already-existing derived project (which has its own independent migration history) still could not receive such a change via a migration file — it never receives one. It would need a documented backfill *procedure* instead.
 
-**Do not** generalize this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies again, because the distribution model that justifies the exception (no consumer ever receives the migration) no longer holds.
+**Do not** apply this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies, because the distribution model that would justify the exception (no consumer ever receives the migration) does not hold for it.
 
 ---
 
@@ -127,6 +145,14 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 ---
 
 ## Testing
+
+### `apps/auth`'s `test:integration` couldn't load `@repo/testing-utils` at all — pure-ESM `@faker-js/faker` under a plain CommonJS Jest config
+
+**Symptom:** `pnpm --filter auth test:integration` fails before any test runs: `Must use import to load ES Module: .../@faker-js/faker/dist/index.js`, thrown from `packages/testing-utils/dist/src/factories/user.factory.js`'s `require("@faker-js/faker")`.
+
+**Cause:** `@faker-js/faker` ships `"type": "module"` with no CommonJS build at all (checked directly against its `package.json`). `packages/testing-utils` compiles to CommonJS, so its compiled `user.factory.js` calls `require()` on a package that has no `require`-able entry point — Node throws `ERR_REQUIRE_ESM` regardless of any `transformIgnorePatterns` tweak, because the `.js` file has already been compiled to a static `require()` call; no Jest transform step can retroactively turn that into an `import()`. `apps/auth/test/jest-integration.json` ran plain CommonJS Jest, unlike `jest-e2e.json`, which was already ESM-mode and unaffected. Not caused by any dependency version bump — `@faker-js/faker` was already pinned at `^10.6.0` (pure ESM) before this repo's most recent dependency work; `test:integration` isn't wired into any CI workflow, so nothing had caught it.
+
+**Fix:** converted `apps/auth/test/jest-integration.json` to the same real-ESM Jest setup already used by `jest-e2e.json` (`extensionsToTreatAsEsm: [".ts"]`, `ts-jest` with `useESM: true` and an inline ESNext/bundler tsconfig), and prefixed the `test:integration` script with `NODE_OPTIONS='--experimental-vm-modules'` — under Node ≥24.9 (this repo runs 24.19), Jest's native ESM execution mode can `require(esm)` a CJS module that itself requires a pure-ESM package; plain CJS Jest mode cannot. Doing this surfaced a second, previously-hidden issue in the same file: under real ESM, Jest's globals (`jest.fn()`, etc.) aren't auto-injected — `test/users.integration.ts` needed an explicit `import { jest } from '@jest/globals';`. If another package ever needs a pure-ESM-only dependency under a Jest suite that still runs in CJS mode, converting that suite's config to this same ESM pattern is the fix, not a `transformIgnorePatterns` change.
 
 ### `apps/web`'s Angular CLI refuses to run under the shell's default active Node version
 

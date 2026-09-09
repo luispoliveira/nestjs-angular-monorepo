@@ -2,7 +2,7 @@ packages:
   - 'apps/*'
   - 'packages/*'
 overrides:
-  zod: '~4.4.3'
+  zod: '~4.6.0'
 allowBuilds:
   '@nestjs/core': true
   '@prisma/engines': true

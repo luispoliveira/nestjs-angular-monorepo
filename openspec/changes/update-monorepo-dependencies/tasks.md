@@ -10,11 +10,11 @@
 
 ## 2. chore: apply the safe dependency upgrades
 
-- [ ] 2.1 `apps/web`: bump Angular packages to their current patch versions (`@angular/*` 22.1.5, `@angular/cdk` and `@angular/material` 22.1.6, `@angular/build` and `@angular/cli` 22.1.7) plus `tslib` 2.8.1; verify `pnpm --filter web build` and `pnpm --filter web test` pass
-- [ ] 2.2 all workspaces: bump the shared lint/test toolchain — `eslint` 10.10.0, `typescript-eslint` 8.70.0, `angular-eslint` 22.5.0, `globals` 17.12.0, `@eslint/eslintrc` 3.3.7, `jest` 30.5.1; verify `pnpm lint` and `pnpm test` pass across the workspace
-- [ ] 2.3 `packages/shared`: bump `@sentry/nestjs` to 10.74.0, `nestjs-cls` to 6.3.0, `@willsoto/nestjs-prometheus` to 6.1.1; verify `pnpm --filter @repo/shared test` passes and that `@sentry/nestjs` stays on the stable 10 line, not the 11 beta
-- [ ] 2.4 `apps/worker`: bump `bullmq` to 6.3.4; verify `pnpm --filter worker test` passes
-- [ ] 2.5 repo root: run the full gate — `pnpm build`, `pnpm lint`, `pnpm check-types`, `pnpm test` — and verify all four succeed with no new warnings
+- [x] 2.1 `apps/web`: bumped Angular packages to their current patch versions (`@angular/*` 22.1.6, `@angular/build`/`@angular/cli` 22.1.7, `postcss` 8.5.28, `rxjs` 7.8.2) plus `tslib` 2.8.1 (registry moved slightly since design.md was written — 22.1.6 rather than 22.1.5, same patch-only nature); verified `pnpm --filter web build` (succeeds, pre-existing bundle-budget warning unrelated to this bump) and `pnpm --filter web test` (77/77 tests pass)
+- [x] 2.2 all workspaces: bumped the shared lint/test toolchain — `eslint` 10.10.0, `typescript-eslint` 8.70.0, `angular-eslint` 22.5.0 (already applied in 2.1), `globals` 17.12.0, `@eslint/eslintrc` 3.3.7, `jest` 30.5.1; verified `pnpm lint` (12/12 tasks pass, all files clean) and `pnpm test` (16/16 tasks pass — 261 tests total across all apps/packages)
+- [x] 2.3 `packages/shared`: bumped `@sentry/nestjs` to 10.74.0, `nestjs-cls` to 6.3.0, `@willsoto/nestjs-prometheus` to 6.1.1; verified `pnpm --filter @repo/shared test` (103/103 pass) and confirmed `@sentry/nestjs` resolved to `^10.74.0` in `package.json`, not the 11 beta
+- [x] 2.4 `apps/worker`: bumped `bullmq` to 6.3.4; this split the resolved `bullmq` into two lockfile entries (6.3.4 direct, 6.3.1 via `@nestjs/bullmq`'s peer context) and broke `pnpm build` with a TS2345 structural-typing error on `Queue` — ran `pnpm dedupe` to collapse it back to one resolved version (recorded in `CORNER_CASES.md` under Queues/BullMQ); verified `pnpm --filter worker test` (33/33 pass) and `pnpm build` (12/12 tasks) after the dedupe
+- [x] 2.5 repo root: ran the full gate — `pnpm build` (12/12), `pnpm lint` (12/12, all files clean), `pnpm check-types` (12/12), `pnpm test` (16/16 tasks, 261 tests) — all four succeed, no new warnings beyond the two pre-existing ones (the `@babel/core@8.0.1` peer warning and the `apps/web` bundle-budget warning, both unrelated to this change)
 - [ ] 2.6 Commit this group using the project `commit` skill (`/commit`)
 
 ## 3. chore: raise Zod to ~4.6.0 across the workspace

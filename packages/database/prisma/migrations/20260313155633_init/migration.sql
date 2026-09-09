@@ -68,6 +68,9 @@ CREATE TABLE "twoFactor" (
     "secret" TEXT NOT NULL,
     "backupCodes" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "verified" BOOLEAN DEFAULT true,
+    "failedVerificationCount" INTEGER DEFAULT 0,
+    "lockedUntil" TIMESTAMP(3),
 
     CONSTRAINT "twoFactor_pkey" PRIMARY KEY ("id")
 );

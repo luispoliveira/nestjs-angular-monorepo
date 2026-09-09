@@ -31,6 +31,16 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 **Fix:** better-auth derives the `Secure` prefix from `advanced.useSecureCookies`, else from whether `baseURL` (i.e. `BETTER_AUTH_URL`) itself starts with `https://`, else from `isProduction` — **never** from `X-Forwarded-Proto` or any other proxy header. Set `BETTER_AUTH_URL` to the actual public `https://` origin (e.g. `https://auth.example.com/api/auth`); a plain-`http://` or container-internal value here silently drops the `Secure` prefix no matter how the proxy in front of it is configured. Verified against a real `Set-Cookie` header from a running `apps/auth` instance with `BETTER_AUTH_URL=https://…`: `__Secure-better-auth.session_token=…; Secure; SameSite=Lax; Domain=…`.
 
+### better-auth 1.7.3 validates the Prisma schema at startup by default and rejects auth requests on any mismatch
+
+**Symptom:** upgrading from better-auth 1.7.2 to 1.7.3 with no other code change causes every request that touches the `twoFactor()` plugin (and, by extension, most auth flows once that plugin is registered) to fail with `Prisma schema mismatch — Missing columns: twoFactor.verified, twoFactor.failedVerificationCount, twoFactor.lockedUntil`.
+
+**Cause:** these three columns are not new — `@better-auth/core`'s `two-factor/schema.ts` declares them identically in 1.7.2 and 1.7.3 (confirmed by diffing the installed packages), and `auth.prisma`'s `TwoFactor` model never had them. What's new in 1.7.3 is the feature itself: *"Enabled schema validation during initialization by default, including in production, and rejected authentication requests on detected mismatches"* (1.7.3 release notes). 1.7.2 silently tolerated the gap since better-auth marks all three fields `required: false`; 1.7.3 now checks the Prisma client's `_runtimeDataModel` against every registered plugin's expected fields and throws on any that are absent, regardless of whether that field is actually required.
+
+**Fix:** this is a genuine, previously-latent gap, not a reverted feature like the `Account.issuer` case below — add the missing columns. Because all three are optional/defaulted on better-auth's side (`verified: Boolean? @default(true)`, `failedVerificationCount: Int? @default(0)`, `lockedUntil: DateTime?`), this is purely additive: no uniqueness constraint, no NOT NULL, no data rewrite, safe even for a project with existing `twoFactor` rows. **Do not stop at editing `auth.prisma` and regenerating the migration** — see the `pnpm db:generate` / `pnpm build` entry under Database above; skipping the rebuild step reproduces the exact same "missing columns" error even after the database and the schema source are both already correct.
+
+If a future better-auth upgrade reports a similar mismatch for a different plugin, check whether the plugin's own schema definition actually changed between versions (a real new requirement) before assuming it did — as with `Account.issuer`, better-auth sometimes reverts a schema change between versions, and the two failure modes look identical from the error message alone. Diff the installed package's schema source between versions before writing a migration.
+
 ### `*` means opposite things to `enableCors` and to `trustedOrigins`
 
 **Symptom:** a `CORS_ORIGIN`/origin-allowlist value of `*` looks like it should behave the same way in every place it's consumed, but it doesn't — in one place it silently blocks everything, in the other it silently trusts everything.
@@ -71,6 +81,14 @@ hoisting at the root hides exactly the failure a pruned deploy reproduces.
 ## Database (Prisma / PrismaPg)
 
 <!-- Add Prisma / DB corner cases here -->
+
+### `pnpm db:generate` alone is not enough after editing `auth.prisma` — `packages/database` must also be rebuilt
+
+**Symptom:** after editing `packages/database/prisma/auth.prisma` and running `pnpm db:generate`, a Prisma-backed feature (e.g. better-auth's own runtime schema validation, new in 1.7.3 — see the Authentication section) still reports the *old* schema, even though the freshly generated `packages/database/generated/prisma/**/*.ts` source on disk is correct and the live database has the new columns.
+
+**Cause:** Prisma 7's `provider = "prisma-client"` generator (unlike the old `prisma-client-js`) emits TypeScript **source**, not compiled JS, into `generated/prisma/`. `packages/database`'s own package entry point (`dist/src/index.js`, built by `tsc -p tsconfig.build.json`) re-exports from `../generated/prisma/client` — a path resolved *relative to `dist/src/`*, i.e. `dist/generated/prisma/client.js`, a **separately compiled copy** produced by `packages/database`'s own build step, not the `generated/prisma/*.ts` source tree that `prisma generate` just refreshed. `pnpm db:generate` never touches `dist/`; only `pnpm build` (or `pnpm --filter @repo/database build`) does.
+
+**Fix:** always run `pnpm build` for `packages/database` after `pnpm db:generate` whenever `auth.prisma` (or any Prisma schema) changes, before any consumer (`apps/auth`, tests, a running app) can see the new fields. Verify directly if in doubt: `grep -c "<new field name>" packages/database/dist/generated/prisma/internal/class.js` — zero means the compiled copy is stale regardless of what the source or the live database say. This bit twice in the same investigation: first the live-DB reset alone didn't fix a schema-mismatch error from better-auth's new 1.7.3 validation, and only rebuilding `packages/database` did.
 
 ### If a future schema correction must reach every template consumer, regenerate `init` — not a currently-applied exception
 

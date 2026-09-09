@@ -2,10 +2,10 @@
 
 ## 1. chore: guard the dependency-update routine
 
-- [ ] 1.1 repo root: create `.ncurc.json` with a `reject` list covering `typescript`, `prisma`, `vitest`, `@nestjs/*` and `ioredis`, each entry carrying an inline comment naming its blocker and release condition per design.md D5; verify by running `pnpm update-packages --dry-run` (or `npx npm-check-updates --deep`) and confirming none of the five appear as proposed upgrades
-- [ ] 1.2 repo root: verify the guard holds for the exact hazards found — confirm the run does not propose `prisma@8.0.0-rc.13`, `typescript@7.0.2`, or `vitest@5.0.0`, and that it still proposes the safe upgrades (e.g. `eslint@10.10.0`)
-- [ ] 1.3 `.claude/CORNER_CASES.md`: add an entry under a build/tooling heading recording the deferred upgrades (TypeScript 7, Prisma 8, Vitest 5, NestJS 12, ioredis 6) with each blocker and unblock condition; verify the entry names the four packages that cap NestJS at 11
-- [ ] 1.4 `.claude/CORNER_CASES.md`: add an entry under the database heading recording the deliberate exception to "never edit an already-applied migration" for this template, per design.md D1; verify it states why the template is exempt (consumed by copy, no upstream remote)
+- [x] 1.1 repo root: create `.ncurc.json` with a `reject` list covering `typescript`, `prisma`/`@prisma/client`, `vitest`, `@nestjs/*` and `ioredis` (rationale moved to `.claude/CORNER_CASES.md` per 1.3/1.4 — `.ncurc.json` is strict JSON passed straight through as CLI options, so inline comments error out with "unknown option"); verified by running `npx npm-check-updates --deep` and confirming none of the five appear as proposed upgrades
+- [x] 1.2 repo root: verified the guard holds for the exact hazards found — the dry run proposes no `prisma`/`@prisma/client`, `typescript`, `vitest`, or `@nestjs/*` core package, while still proposing the safe upgrades (`eslint ^10.10.0`, `bullmq ^6.3.4`, etc.); only match for "prisma" in the full output is `@better-auth/prisma-adapter` (not a rejected package)
+- [x] 1.3 `.claude/CORNER_CASES.md`: added an entry under "Build / Turborepo / pnpm" recording the deferred upgrades (TypeScript 7, Prisma 8, Vitest 5, NestJS 12, ioredis 6) with each blocker and unblock condition; names all four packages that cap NestJS at 11 (`nestjs-zod`, `@sentry/nestjs`, `@nestjs/throttler`, `@nest-lab/throttler-storage-redis`)
+- [x] 1.4 `.claude/CORNER_CASES.md`: added an entry under "Database (Prisma / PrismaPg)" recording the deliberate exception to "never edit an already-applied migration" for this template, per design.md D1; states why the template is exempt (consumed by copy, no upstream remote) and explicitly scopes the exception away from derived projects that have become live systems
 - [ ] 1.5 Commit this group using the project `commit` skill (`/commit`)
 
 ## 2. chore: apply the safe dependency upgrades

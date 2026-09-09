@@ -6,7 +6,7 @@
 - [x] 1.2 repo root: verified the guard holds for the exact hazards found — the dry run proposes no `prisma`/`@prisma/client`, `typescript`, `vitest`, or `@nestjs/*` core package, while still proposing the safe upgrades (`eslint ^10.10.0`, `bullmq ^6.3.4`, etc.); only match for "prisma" in the full output is `@better-auth/prisma-adapter` (not a rejected package)
 - [x] 1.3 `.claude/CORNER_CASES.md`: added an entry under "Build / Turborepo / pnpm" recording the deferred upgrades (TypeScript 7, Prisma 8, Vitest 5, NestJS 12, ioredis 6) with each blocker and unblock condition; names all four packages that cap NestJS at 11 (`nestjs-zod`, `@sentry/nestjs`, `@nestjs/throttler`, `@nest-lab/throttler-storage-redis`)
 - [x] 1.4 `.claude/CORNER_CASES.md`: added an entry under "Database (Prisma / PrismaPg)" recording the deliberate exception to "never edit an already-applied migration" for this template, per design.md D1; states why the template is exempt (consumed by copy, no upstream remote) and explicitly scopes the exception away from derived projects that have become live systems
-- [ ] 1.5 Commit this group using the project `commit` skill (`/commit`)
+- [x] 1.5 Commit this group using the project `commit` skill (`/commit`) — commit `371b1ea`
 
 ## 2. chore: apply the safe dependency upgrades
 
@@ -15,7 +15,7 @@
 - [x] 2.3 `packages/shared`: bumped `@sentry/nestjs` to 10.74.0, `nestjs-cls` to 6.3.0, `@willsoto/nestjs-prometheus` to 6.1.1; verified `pnpm --filter @repo/shared test` (103/103 pass) and confirmed `@sentry/nestjs` resolved to `^10.74.0` in `package.json`, not the 11 beta
 - [x] 2.4 `apps/worker`: bumped `bullmq` to 6.3.4; this split the resolved `bullmq` into two lockfile entries (6.3.4 direct, 6.3.1 via `@nestjs/bullmq`'s peer context) and broke `pnpm build` with a TS2345 structural-typing error on `Queue` — ran `pnpm dedupe` to collapse it back to one resolved version (recorded in `CORNER_CASES.md` under Queues/BullMQ); verified `pnpm --filter worker test` (33/33 pass) and `pnpm build` (12/12 tasks) after the dedupe
 - [x] 2.5 repo root: ran the full gate — `pnpm build` (12/12), `pnpm lint` (12/12, all files clean), `pnpm check-types` (12/12), `pnpm test` (16/16 tasks, 261 tests) — all four succeed, no new warnings beyond the two pre-existing ones (the `@babel/core@8.0.1` peer warning and the `apps/web` bundle-budget warning, both unrelated to this change)
-- [ ] 2.6 Commit this group using the project `commit` skill (`/commit`)
+- [x] 2.6 Commit this group using the project `commit` skill (`/commit`) — commit `3a8bc7c`
 
 ## 3. chore: raise Zod to ~4.6.0 across the workspace
 
@@ -23,7 +23,7 @@
 - [x] 3.2 all six apps and `packages/shared`, `packages/shared-types`: updated the `zod` dependency from `~4.4.3` to `~4.6.0` in all eight `package.json` files; a repo-wide grep for `~4.4.3` returns no matches
 - [x] 3.3 repo root: ran `pnpm install` then `node scripts/verify-single-zod-version.mjs`; exits zero and prints "OK: single resolved zod version — 4.6.0" — confirms the override took effect, not just a single stale resolution
 - [x] 3.4 repo root: ran `pnpm build` (12/12), `pnpm check-types` (12/12), `pnpm test` (16/16 tasks, 261 tests) — all pass, Zod v4 API surface (`createZodDto`, `z.email()`, `.meta()`) compiles and validates unchanged. Note: `apps/web`'s production bundle grew ~111 kB (881 kB → 992 kB) — traced to zod's own unpacked package size growing from 4.56 MB (4.4.3) to 6.09 MB (4.6.0), confirmed as a single resolved version (no duplicate-resolution bug like 2.4's bullmq case). This is a real, inherent cost of the new zod version, not a defect in this change; flagged to the user rather than silently absorbed, since bundle size was not a stated acceptance criterion for this change
-- [ ] 3.5 Commit this group using the project `commit` skill (`/commit`)
+- [x] 3.5 Commit this group using the project `commit` skill (`/commit`) — commit `a8480aa`
 
 ## 4. feat: upgrade better-auth to 1.7.3
 
@@ -31,7 +31,7 @@
 - [x] 4.2 `apps/web`: bumped `better-auth` to 1.7.3 so the client and server stay on one version; `pnpm --filter web build` succeeds (bundle size unchanged from the 3.4 zod-driven figure, as expected)
 - [x] 4.3 `apps/auth`: verified the existing `betterAuth()` configuration in `app.module.ts` still type-checks against 1.7.3 — `pnpm --filter auth check-types` passes cleanly (no errors), covering the `twoFactor()`/`admin()` plugins and `advanced.disableOriginCheck`
 - [x] 4.4 `apps/auth`: ran the existing unit and integration suites — `pnpm --filter auth test` (15/15 pass, no regression) and `pnpm --filter auth test:integration`. The integration suite failed to even load before any fix (pre-existing, unrelated to this change — pure-ESM `@faker-js/faker` under a CommonJS Jest config, see CORNER_CASES.md); converted `jest-integration.json` to the same ESM setup already used by `jest-e2e.json` and added a missing `@jest/globals` import that the ESM conversion exposed. Now 7/7 pass. `test:e2e` remains blocked by an unrelated local Docker Mongo volume permission error (`WiredTiger.wt: Operation not permitted`) — a local environment issue, not a code or dependency defect; flagged for tasks 5.6/7.1/7.3
-- [ ] 4.5 Commit this group using the project `commit` skill (`/commit`)
+- [x] 4.5 Commit this group using the project `commit` skill (`/commit`) — commit `cc4f644`
 
 ## 5. investigate: does better-auth 1.7.3 actually need the account-identity schema change?
 
@@ -43,7 +43,7 @@ This group was originally scoped as "feat: model better-auth account identity in
 - [x] 5.4 empirical verification: wrote a throwaway script (deleted after use, never committed) that constructed a real `betterAuth()` instance with the `PrismaPg` adapter against the actual local Postgres test database and called `auth.api.signUpEmail()` directly (not a test-factory bypass) — succeeded, producing an `account` row with no `issuer` field, matching the source-code finding; cleaned up the created test row and disconnected
 - [x] 5.5 updated `proposal.md` (added "Investigated and not carried forward," removed the `better-auth-account-identity` capability and its Impact/Risk references), `design.md` (D1/D2/D4 marked withdrawn and rewritten to record what was considered without presenting it as applied), deleted `specs/better-auth-account-identity/spec.md`, and corrected the `CORNER_CASES.md` migration-regeneration entry (which had cited this exact change as its example) to describe an unexercised policy rather than something already done
 - [x] 5.6 `apps/auth`: ran the e2e suite (`pnpm --filter auth test:e2e`) — the local Docker Mongo volume permission error noted in 4.4 was independently resolved (the mongo container is now `healthy`); e2e initially still failed, but with a *different* error unrelated to `Account.issuer` — see group 6, which this finding led to
-- [x] 5.7 Commit this group using the project `commit` skill (`/commit`)
+- [x] 5.7 Commit this group using the project `commit` skill (`/commit`) — commit `6ef1bed`
 
 ## 6. feat: fix a genuinely-required `TwoFactor` schema gap (discovered via 5.6)
 
@@ -57,14 +57,14 @@ Not part of the original task list — discovered while running task 5.6's e2e s
 - [x] 6.6 `packages/database`: ran `pnpm build` — required in addition to `pnpm db:generate`; the compiled `dist/generated/prisma/` output (what `@repo/database`'s own entry point actually loads at runtime) is a separate build artifact that `db:generate` does not refresh, and a stale copy reproduced the exact same "missing columns" error even after the schema, the migration, and the live database were all already correct. Documented as a standalone `CORNER_CASES.md` entry
 - [x] 6.7 `apps/auth`: re-ran `pnpm --filter auth test:e2e` — 8/8 pass, confirming sign-up and sign-in both succeed end-to-end against the corrected schema. This also resolves the e2e blockers noted in 4.4, 5.6, and the nestjs-pino group's 7.3 (formerly 6.3) below — the local Docker Mongo issue and the schema gap were the only two blockers, and both are now closed
 - [x] 6.8 updated `proposal.md` (new "Applied: TwoFactor schema fix" section, new capability, Risks/Impact), `design.md` (new decision D7, Context/Non-Goals/Risks/Migration Plan corrections), added `specs/better-auth-two-factor-schema/spec.md`, and added two `CORNER_CASES.md` entries (the schema-validation behavior itself, and the `db:generate`-then-`build` gotcha)
-- [x] 6.9 Commit this group using the project `commit` skill (`/commit`)
+- [x] 6.9 Commit this group using the project `commit` skill (`/commit`) — commit `a66875a`
 
 ## 7. chore: upgrade nestjs-pino to 5.1.0
 
 - [x] 7.1 all NestJS apps and `packages/shared`: bumped `nestjs-pino` from 4.6.1 to 5.1.0; `pnpm install` reports no unmet peer for `pino ^10` or `pino-http ^11` (only the pre-existing `@babel/core` warning); Node 24.19 satisfies the `>=22.12` engine; lockfile resolves a single copy each of `nestjs-pino@5.1.0`, `pino@10.3.1`, `pino-http@11.0.0` (no dedupe needed, unlike 2.4's bullmq case)
 - [x] 7.2 `packages/shared`: ran `pnpm --filter @repo/shared test` (103/103 pass, includes `LoggingInterceptor` coverage — still persists request/response logs to MongoDB). Note: `packages/shared/src/logging/pino.config.ts` (untouched by this bump — confirmed via `git diff HEAD~1`) configures `pino-pretty` transport unconditionally, not gated by `isProduction` — only the log `level` is environment-conditional. This contradicts CLAUDE.md's documented "pretty in dev, JSON in prod," but is a pre-existing discrepancy, not something this nestjs-pino 5 bump introduced or changed; flagging rather than silently confirming a behavior that isn't actually there
 - [x] 7.3 `apps/api`: attempted a live start (`pnpm dev`) to confirm correlation-ID threading via an actual HTTP round trip — at the time, blocked by the same pre-existing local Docker Mongo volume permission error as 4.4/5.6 (`MongooseModule` retries `ECONNREFUSED`, `app.listen()` never reached, confirmed by `curl` failing to connect). Fell back to the existing unit coverage that exercises the exact same code paths: `correlation.interceptor.spec.ts`, `http-exception.filter.spec.ts`, `logging.interceptor.spec.ts` — all pass as part of the 103/103 `@repo/shared` suite in 7.2. **Resolved:** the Mongo issue was fixed independently during this session, and group 6's task 6.7 confirms sign-up/sign-in work end-to-end after the rebase — no further live check needed here
-- [x] 7.4 Commit this group using the project `commit` skill (`/commit`)
+- [x] 7.4 Commit this group using the project `commit` skill (`/commit`) — commit `2e9a381`
 
 ## 8. Final verification
 

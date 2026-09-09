@@ -252,8 +252,6 @@ services:
       - '27017:27017'
     env_file:
       - ./docker/mongo.env
-    volumes:
-      - ./.tmp/mongo-data:/data/db
     networks:
       - app
     healthcheck:

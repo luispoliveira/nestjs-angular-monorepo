@@ -4,6 +4,7 @@ import { ClientsModule } from '@nestjs/microservices';
 import {
   MicroserviceAuthGuard,
   MicroserviceUtil,
+  RolesGuard,
   SharedModule,
 } from '@repo/shared';
 import { AppController } from './app.controller';
@@ -24,6 +25,10 @@ import { apiEnvSchema } from './env';
     {
       provide: APP_GUARD,
       useClass: MicroserviceAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

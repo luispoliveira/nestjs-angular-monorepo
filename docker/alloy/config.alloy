@@ -1,0 +1,66 @@
+// Tails the PM2 log files (see ecosystem.config.js's LOG_DIR) and ships them
+// to Loki. Apps write JSON lines to stdout/stderr; PM2 redirects those to
+// ./logs/<app>-out.log and ./logs/<app>-error.log, which this container
+// reads read-only via the ./logs:/var/log/app bind mount.
+
+local.file_match "app_logs" {
+  path_targets = [
+    {"__path__" = "/var/log/app/*.log"},
+  ]
+}
+
+loki.source.file "app_logs" {
+  targets    = local.file_match.app_logs.targets
+  forward_to = [loki.process.app_logs.receiver]
+}
+
+loki.process "app_logs" {
+  // Derives the `app` (auth, api, worker, cron, notifications) and `stream`
+  // (out, error) labels straight from the PM2 log filename convention.
+  stage.regex {
+    source     = "filename"
+    expression = "(?P<app>[a-z]+)-(?P<stream>out|error)\\.log$"
+  }
+
+  stage.labels {
+    values = {
+      app    = "",
+      stream = "",
+    }
+  }
+
+  // Pino writes `level` as a number (10/20/30/40/50/60) and `time` as epoch
+  // ms. Loki's built-in level detection only understands string levels, so
+  // map it explicitly to a `level` label and use pino's own timestamp
+  // instead of ingestion time.
+  stage.json {
+    expressions = {
+      pino_level = "level",
+      pino_time  = "time",
+    }
+  }
+
+  stage.template {
+    source   = "pino_level"
+    template = `{{ if eq .Value "10" }}trace{{ else if eq .Value "20" }}debug{{ else if eq .Value "30" }}info{{ else if eq .Value "40" }}warn{{ else if eq .Value "50" }}error{{ else if eq .Value "60" }}fatal{{ else }}unknown{{ end }}`
+  }
+
+  stage.labels {
+    values = {
+      level = "pino_level",
+    }
+  }
+
+  stage.timestamp {
+    source = "pino_time"
+    format = "UnixMs"
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

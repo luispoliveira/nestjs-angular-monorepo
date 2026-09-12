@@ -31,6 +31,7 @@ export const userSchema = z
     id: z.string(),
     name: z.string(),
     email: z.email(),
+    emailVerified: z.boolean(),
     role: z.enum(RoleEnum).nullish(),
     banned: z.boolean().nullish(),
     banReason: z.string().nullish(),

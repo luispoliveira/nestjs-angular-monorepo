@@ -15,6 +15,7 @@ import { AUTH_CLIENT } from '../../../auth/auth-client.token';
 import { SessionService } from '../../../auth/session.service';
 import { BanUserDialog } from '../ban-user-dialog/ban-user-dialog';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog';
+import { EditUserDialog } from './edit-user-dialog/edit-user-dialog';
 import { SetPasswordDialog } from './set-password-dialog/set-password-dialog';
 
 /**
@@ -108,6 +109,12 @@ export class UserDetail {
     const user = this.user();
     if (!user) return;
     this.dialog.open(SetPasswordDialog, { data: { user } });
+  }
+
+  protected editUser(): void {
+    const user = this.user();
+    if (!user) return;
+    this.dialog.open(EditUserDialog, { data: { user } });
   }
 
   protected async unban(): Promise<void> {

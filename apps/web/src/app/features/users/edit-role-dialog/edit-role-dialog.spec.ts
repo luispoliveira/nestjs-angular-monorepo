@@ -10,6 +10,7 @@ function user(overrides: Partial<User> = {}): User {
     id: '1',
     name: 'Jane Doe',
     email: 'jane@example.com',
+    emailVerified: true,
     role: RoleEnum.USER,
     banned: false,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),

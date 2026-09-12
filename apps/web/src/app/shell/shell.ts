@@ -77,6 +77,7 @@ export class Shell {
 
   protected async signOut(): Promise<void> {
     await this.authClient.signOut();
+    await this.session.signedOut();
     await this.router.navigateByUrl('/sign-in');
   }
 

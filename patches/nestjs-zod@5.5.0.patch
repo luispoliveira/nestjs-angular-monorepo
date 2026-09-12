@@ -1,0 +1,50 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index fe4c07c4c8e362d464114cdfa6978e9d49a0f479..215ff25d80be54d4272d9658c9fa25912d107ec4 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -308,7 +308,10 @@ function cleanupOpenApiDoc(doc, { version: versionParam = "auto" } = {}) {
+ * Mutates `schemaRegistry`
+ */
+ function registerSchema(schemaRegistry, schemaName, schema) {
+-	if (schemaRegistry[schemaName] && !(0, node_util.isDeepStrictEqual)(schemaRegistry[schemaName], schema)) throw new Error(`[cleanupOpenApiDoc] Found multiple schemas with name \`${schemaName}\`.  Please review your schemas to ensure that you are not using the same schema name for different schemas`);
++	if (schemaRegistry[schemaName] && !(0, node_util.isDeepStrictEqual)(schemaRegistry[schemaName], schema)) {
++		console.warn("[cleanupOpenApiDoc] Found multiple schemas with name `" + schemaName + "` with different shapes (nestjs-zod codec bug); keeping the first one and skipping the rest.");
++		return;
++	}
+ 	schemaRegistry[schemaName] = schema;
+ }
+ /**
+@@ -419,7 +422,7 @@ function cleanupSchema({ oldSchemaName, oldOpenapiSchema, version }) {
+ 		delete newOpenapiSchema.properties.root[require_dto.UNWRAP_ROOT_KEY];
+ 		if (replaceRoot) newOpenapiSchema = newOpenapiSchema.properties.root;
+ 	}
+-	if (additionalNewSchemas[newSchemaName] && !(0, node_util.isDeepStrictEqual)(additionalNewSchemas[newSchemaName], newOpenapiSchema)) throw new Error(`[cleanupOpenApiDoc] Found multiple schemas with name \`${newSchemaName}\`.  Please review your schemas to ensure that you are not using the same schema name for different schemas`);
++	if (additionalNewSchemas[newSchemaName] && !(0, node_util.isDeepStrictEqual)(additionalNewSchemas[newSchemaName], newOpenapiSchema)) console.warn("[cleanupOpenApiDoc] Found multiple schemas with name `" + newSchemaName + "` with different shapes (nestjs-zod codec bug); keeping the first one and skipping the rest.");
+ 	return {
+ 		newSchema: newOpenapiSchema,
+ 		newSchemaName,
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 8ad522d97404f767232b7bba06abe7eb21b67587..7ae183851287b22ee3edd36218ef49d74afd0f24 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -310,7 +310,10 @@ function cleanupOpenApiDoc(doc, { version: versionParam = "auto" } = {}) {
+ * Mutates `schemaRegistry`
+ */
+ function registerSchema(schemaRegistry, schemaName, schema) {
+-	if (schemaRegistry[schemaName] && !isDeepStrictEqual(schemaRegistry[schemaName], schema)) throw new Error(`[cleanupOpenApiDoc] Found multiple schemas with name \`${schemaName}\`.  Please review your schemas to ensure that you are not using the same schema name for different schemas`);
++	if (schemaRegistry[schemaName] && !isDeepStrictEqual(schemaRegistry[schemaName], schema)) {
++		console.warn("[cleanupOpenApiDoc] Found multiple schemas with name `" + schemaName + "` with different shapes (nestjs-zod codec bug); keeping the first one and skipping the rest.");
++		return;
++	}
+ 	schemaRegistry[schemaName] = schema;
+ }
+ /**
+@@ -421,7 +424,7 @@ function cleanupSchema({ oldSchemaName, oldOpenapiSchema, version }) {
+ 		delete newOpenapiSchema.properties.root[UNWRAP_ROOT_KEY];
+ 		if (replaceRoot) newOpenapiSchema = newOpenapiSchema.properties.root;
+ 	}
+-	if (additionalNewSchemas[newSchemaName] && !isDeepStrictEqual(additionalNewSchemas[newSchemaName], newOpenapiSchema)) throw new Error(`[cleanupOpenApiDoc] Found multiple schemas with name \`${newSchemaName}\`.  Please review your schemas to ensure that you are not using the same schema name for different schemas`);
++	if (additionalNewSchemas[newSchemaName] && !isDeepStrictEqual(additionalNewSchemas[newSchemaName], newOpenapiSchema)) console.warn("[cleanupOpenApiDoc] Found multiple schemas with name `" + newSchemaName + "` with different shapes (nestjs-zod codec bug); keeping the first one and skipping the rest.");
+ 	return {
+ 		newSchema: newOpenapiSchema,
+ 		newSchemaName,

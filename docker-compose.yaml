@@ -216,6 +216,37 @@ services:
       - app
     depends_on:
       - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.7.0
+    restart: unless-stopped
+    ports:
+      # Host port 3100 is taken by apps/api (see ecosystem.config.js) — Loki's
+      # container-internal port stays 3100, only the host mapping moves.
+      - '3101:3100'
+    volumes:
+      - ./.tmp/loki-data:/loki
+    networks:
+      - app
+
+  # Tails the PM2-managed apps' log files (./logs, see ecosystem.config.js)
+  # and ships them to Loki. Nothing to tail in local dev, where apps run via
+  # `pnpm dev` on the host instead of under PM2 — harmless no-op until then.
+  alloy:
+    image: grafana/alloy:v1.15.0
+    restart: unless-stopped
+    volumes:
+      - ./docker/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./logs:/var/log/app:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    networks:
+      - app
+    depends_on:
+      - loki
 
   postgres:
     image: postgres:17-alpine

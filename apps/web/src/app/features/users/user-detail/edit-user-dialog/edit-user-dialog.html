@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Edit user</h2>
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="flex flex-col gap-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Full name</mat-label>
+      <input matInput formControlName="name" data-testid="name-input" />
+      @if (form.controls.name.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" data-testid="email-input" />
+      @if (form.controls.email.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-checkbox formControlName="emailVerified" data-testid="email-verified-checkbox">Email verified</mat-checkbox>
+
+    @if (serverError(); as error) {
+      <p role="alert" data-testid="server-error">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()" [disabled]="updateUser.isPending()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="updateUser.isPending()" data-testid="submit-button">
+      {{ updateUser.isPending() ? 'Saving…' : 'Save' }}
+    </button>
+  </mat-dialog-actions>
+</form>

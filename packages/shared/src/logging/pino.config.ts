@@ -17,16 +17,18 @@ export const pinoConfig: Params = {
   pinoHttp: {
     level: isProduction ? 'info' : 'debug',
 
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        singleLine: true,
-        translateTime: 'SYS:HH:MM:ss',
-        ignore: 'pid,hostname,req,res,responseTime,requestId,correlationId',
-        messageFormat: '{context} | {msg}',
-      },
-    },
+    transport: isProduction
+      ? undefined
+      : {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            singleLine: true,
+            translateTime: 'SYS:HH:MM:ss',
+            ignore: 'pid,hostname,req,res,responseTime,requestId,correlationId',
+            messageFormat: '{context} | {msg}',
+          },
+        },
 
     customProps: (req: IncomingMessage) => ({
       context: 'HTTP',

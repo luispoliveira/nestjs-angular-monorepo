@@ -5,6 +5,7 @@ import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-exper
 import { of } from 'rxjs';
 import { AUTH_CLIENT } from '../../../auth/auth-client.token';
 import { BanUserDialog } from '../ban-user-dialog/ban-user-dialog';
+import { EditUserDialog } from './edit-user-dialog/edit-user-dialog';
 import { SetPasswordDialog } from './set-password-dialog/set-password-dialog';
 import { UserDetail } from './user-detail';
 
@@ -28,6 +29,7 @@ const realUser = {
   id: '1',
   name: 'Jane Doe',
   email: 'jane@example.com',
+  emailVerified: true,
   role: 'user',
   banned: false,
   banReason: null,
@@ -122,6 +124,19 @@ describe('UserDetail', () => {
     fixture.nativeElement.querySelector('[data-testid="set-password-action"]').click();
 
     expect(openSpy).toHaveBeenCalledWith(SetPasswordDialog, {
+      data: { user: expect.objectContaining({ id: '1' }) },
+    });
+  });
+
+  it('opens the edit user dialog for the current user', async () => {
+    const getUser = vi.fn().mockResolvedValue({ data: realUser, error: null });
+    const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue({} as ReturnType<MatDialog['open']>);
+    const fixture = setUp({ getUser });
+    await waitForSettled(fixture);
+
+    fixture.nativeElement.querySelector('[data-testid="edit-user-action"]').click();
+
+    expect(openSpy).toHaveBeenCalledWith(EditUserDialog, {
       data: { user: expect.objectContaining({ id: '1' }) },
     });
   });

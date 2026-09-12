@@ -123,14 +123,32 @@ describe('LocalAuthService', () => {
   // ===========================================================================
 
   describe('handlePasswordChanged()', () => {
-    it('should emit emitUserPasswordChanged for a valid session', async () => {
+    it('should emit emitUserPasswordChanged from the original session', () => {
       const mockUser = { id: 'user-1', email: 'user@example.com' };
-      authService.api.getSession.mockResolvedValue({
-        user: mockUser,
-        session: {},
-      });
 
-      await service.handlePasswordChanged({ headers: {} } as never);
+      service.handlePasswordChanged({
+        context: { session: { user: mockUser } },
+      } as never);
+
+      expect(
+        notificationsPublisher.emitUserPasswordChanged,
+      ).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        email: mockUser.email,
+        reason: 'User changed password',
+      });
+      expect(authService.api.getSession).not.toHaveBeenCalled();
+    });
+
+    it('should prefer the rotated session when revokeOtherSessions replaced it', () => {
+      const mockUser = { id: 'user-1', email: 'user@example.com' };
+
+      service.handlePasswordChanged({
+        context: {
+          session: { user: { id: 'stale', email: 'stale@example.com' } },
+          newSession: { user: mockUser },
+        },
+      } as never);
 
       expect(
         notificationsPublisher.emitUserPasswordChanged,
@@ -141,20 +159,10 @@ describe('LocalAuthService', () => {
       });
     });
 
-    it('should throw when session is null', async () => {
-      authService.api.getSession.mockResolvedValue(null);
-
-      await expect(
-        service.handlePasswordChanged({ headers: {} } as never),
-      ).rejects.toThrow('Session not found');
-    });
-
-    it('should throw when session has no user', async () => {
-      authService.api.getSession.mockResolvedValue({ user: null });
-
-      await expect(
-        service.handlePasswordChanged({ headers: {} } as never),
-      ).rejects.toThrow('Session not found');
+    it('should throw when neither session nor newSession carries a user', () => {
+      expect(() =>
+        service.handlePasswordChanged({ context: {} } as never),
+      ).toThrow('Session not found');
     });
   });
 
@@ -163,14 +171,12 @@ describe('LocalAuthService', () => {
   // ===========================================================================
 
   describe('handleTwoFactorEnabled()', () => {
-    it('should emit emitUserTwoFactorEnabled for a valid session', async () => {
+    it('should emit emitUserTwoFactorEnabled from the original session', () => {
       const mockUser = { id: 'user-1', email: 'user@example.com' };
-      authService.api.getSession.mockResolvedValue({
-        user: mockUser,
-        session: {},
-      });
 
-      await service.handleTwoFactorEnabled({ headers: {} } as never);
+      service.handleTwoFactorEnabled({
+        context: { session: { user: mockUser } },
+      } as never);
 
       expect(
         notificationsPublisher.emitUserTwoFactorEnabled,
@@ -180,12 +186,10 @@ describe('LocalAuthService', () => {
       });
     });
 
-    it('should throw when session is null', async () => {
-      authService.api.getSession.mockResolvedValue(null);
-
-      await expect(
-        service.handleTwoFactorEnabled({ headers: {} } as never),
-      ).rejects.toThrow('Session not found');
+    it('should throw when neither session nor newSession carries a user', () => {
+      expect(() =>
+        service.handleTwoFactorEnabled({ context: {} } as never),
+      ).toThrow('Session not found');
     });
   });
 
@@ -194,14 +198,17 @@ describe('LocalAuthService', () => {
   // ===========================================================================
 
   describe('handleTwoFactorDisabled()', () => {
-    it('should emit emitUserTwoFactorDisabled for a valid session', async () => {
+    it('should emit emitUserTwoFactorDisabled from the rotated session', () => {
       const mockUser = { id: 'user-1', email: 'user@example.com' };
-      authService.api.getSession.mockResolvedValue({
-        user: mockUser,
-        session: {},
-      });
 
-      await service.handleTwoFactorDisabled({ headers: {} } as never);
+      // /two-factor/disable always rotates the session, so the hook must
+      // read newSession, not the (by-then-deleted) original session.
+      service.handleTwoFactorDisabled({
+        context: {
+          session: { user: { id: 'stale', email: 'stale@example.com' } },
+          newSession: { user: mockUser },
+        },
+      } as never);
 
       expect(
         notificationsPublisher.emitUserTwoFactorDisabled,
@@ -209,14 +216,13 @@ describe('LocalAuthService', () => {
         userId: mockUser.id,
         email: mockUser.email,
       });
+      expect(authService.api.getSession).not.toHaveBeenCalled();
     });
 
-    it('should throw when session is null', async () => {
-      authService.api.getSession.mockResolvedValue(null);
-
-      await expect(
-        service.handleTwoFactorDisabled({ headers: {} } as never),
-      ).rejects.toThrow('Session not found');
+    it('should throw when neither session nor newSession carries a user', () => {
+      expect(() =>
+        service.handleTwoFactorDisabled({ context: {} } as never),
+      ).toThrow('Session not found');
     });
   });
 

@@ -1,0 +1,34 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="mx-auto flex max-w-sm flex-col gap-4 p-6">
+  <h1 class="text-xl font-semibold">Two-factor verification</h1>
+  <p class="text-sm text-gray-500">
+    @if (useBackupCode()) {
+      Enter one of your backup codes.
+    } @else {
+      Enter the 6-digit code from your authenticator app.
+    }
+  </p>
+
+  <mat-form-field>
+    <mat-label>{{ useBackupCode() ? 'Backup code' : 'Code' }}</mat-label>
+    <input matInput formControlName="code" autocomplete="one-time-code" data-testid="code-input" />
+    @if (form.controls.code.errors?.['zod']; as message) {
+      <mat-error>{{ message }}</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-checkbox formControlName="trustDevice" data-testid="trust-device-checkbox">
+    Trust this device for 30 days
+  </mat-checkbox>
+
+  @if (serverError(); as message) {
+    <p class="text-sm text-red-600" role="alert" data-testid="server-error">{{ message }}</p>
+  }
+
+  <button mat-raised-button color="primary" type="submit" [disabled]="submitting()" data-testid="submit-button">
+    {{ submitting() ? 'Verifying…' : 'Verify' }}
+  </button>
+
+  <button type="button" class="text-left text-sm text-blue-600 underline" (click)="toggleBackupCode()" data-testid="toggle-backup-code">
+    {{ useBackupCode() ? 'Use an authenticator code instead' : 'Use a backup code instead' }}
+  </button>
+</form>

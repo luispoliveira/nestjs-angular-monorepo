@@ -120,6 +120,58 @@ describe('SessionService', () => {
     expect(service.isImpersonating()).toBe(true);
   });
 
+  it('signedOut() resolves immediately when already signed out', async () => {
+    const { atom } = createFakeSessionAtom(unauthenticated);
+    TestBed.configureTestingModule({ providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }] });
+    const service = TestBed.inject(SessionService);
+
+    await expect(service.signedOut()).resolves.toBeUndefined();
+  });
+
+  it('signedOut() waits for the atom to go null before resolving', async () => {
+    const { atom, set } = createFakeSessionAtom(authenticated);
+    TestBed.configureTestingModule({ providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }] });
+    const service = TestBed.inject(SessionService);
+
+    let resolved = false;
+    const wait = service.signedOut().then(() => {
+      resolved = true;
+    });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    set(unauthenticated);
+    await wait;
+
+    expect(resolved).toBe(true);
+  });
+
+  it('signedIn() resolves immediately when already signed in', async () => {
+    const { atom } = createFakeSessionAtom(authenticated);
+    TestBed.configureTestingModule({ providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }] });
+    const service = TestBed.inject(SessionService);
+
+    await expect(service.signedIn()).resolves.toBeUndefined();
+  });
+
+  it('signedIn() waits for the atom to carry data before resolving', async () => {
+    const { atom, set } = createFakeSessionAtom(unauthenticated);
+    TestBed.configureTestingModule({ providers: [{ provide: AUTH_CLIENT, useValue: { useSession: atom } }] });
+    const service = TestBed.inject(SessionService);
+
+    let resolved = false;
+    const wait = service.signedIn().then(() => {
+      resolved = true;
+    });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    set(authenticated);
+    await wait;
+
+    expect(resolved).toBe(true);
+  });
+
   it('releases the subscription when the injector is destroyed', () => {
     const { atom, listenerCount } = createFakeSessionAtom(unauthenticated);
 

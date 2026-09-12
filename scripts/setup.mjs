@@ -53,7 +53,32 @@ function applyCredentials(content, pg, mongo, secret) {
   return content;
 }
 
+// ─── Local-dev overrides for apps/auth's browser-facing URLs ────────────────
+// .env.example ships production-shaped placeholders (auth.example.com,
+// admin.example.com, .example.com) on purpose, to force an explicit choice
+// in real deployments — but pnpm setup exists to bootstrap local dev, so it
+// swaps them for the actual dev ports (README's Environment Variables
+// reference: BETTER_AUTH_URL/CORS_ORIGIN/UI_URL on localhost:3000/:4200,
+// COOKIE_DOMAIN unset since dev isn't split across sibling subdomains).
+function applyAuthDevDefaults(content) {
+  content = content.replace(
+    /^BETTER_AUTH_URL=.*/m,
+    'BETTER_AUTH_URL="http://localhost:3000/api/auth"',
+  );
+  content = content.replace(
+    /^CORS_ORIGIN=.*/m,
+    'CORS_ORIGIN="http://localhost:3000,http://localhost:4200"',
+  );
+  content = content.replace(/^COOKIE_DOMAIN=.*\n/m, '');
+  content = /^UI_URL=/m.test(content)
+    ? content.replace(/^UI_URL=.*/m, 'UI_URL="http://localhost:4200"')
+    : content.replace(/^(BETTER_AUTH_URL=.*)$/m, '$1\nUI_URL="http://localhost:4200"');
+  return content;
+}
+
 // ─── Files to copy & patch ───────────────────────────────────────────────────
+// apps/web is intentionally absent: Angular has no runtime .env, config is
+// baked in at build time via src/environments/{environment.ts,environment.prod.ts}.
 const APP_ENV_FILES = [
   ['.env.example', '.env'],
   ['apps/auth/.env.example', 'apps/auth/.env'],
@@ -61,7 +86,6 @@ const APP_ENV_FILES = [
   ['apps/notifications/.env.example', 'apps/notifications/.env'],
   ['apps/worker/.env.example', 'apps/worker/.env'],
   ['apps/cron/.env.example', 'apps/cron/.env'],
-  ['apps/web/.env.example', 'apps/web/.env'],
   ['packages/database/.env.example', 'packages/database/.env'],
 ];
 
@@ -119,7 +143,8 @@ async function main() {
       skip(`${dest} already exists, skipping`);
       continue;
     }
-    const content = applyCredentials(readFileSync(srcPath, 'utf8'), pg, mongo, betterAuthSecret);
+    let content = applyCredentials(readFileSync(srcPath, 'utf8'), pg, mongo, betterAuthSecret);
+    if (dest === 'apps/auth/.env') content = applyAuthDevDefaults(content);
     writeFileSync(destPath, content);
     ok(`${src} → ${dest}`);
   }

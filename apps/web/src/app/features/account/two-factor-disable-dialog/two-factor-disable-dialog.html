@@ -1,0 +1,23 @@
+<h2 mat-dialog-title>Disable two-factor authentication</h2>
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="flex flex-col gap-2">
+    <p>Confirm your password to disable two-factor authentication.</p>
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" formControlName="password" data-testid="password-input" />
+      @if (form.controls.password.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    @if (serverError(); as error) {
+      <p role="alert" data-testid="server-error">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()" [disabled]="submitting()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="submitting()" data-testid="submit-button">
+      {{ submitting() ? 'Disabling…' : 'Disable' }}
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -48,8 +48,8 @@ feita pela porta, não pelo path. Os serviços comunicam entre si via Redis tran
 ## 1. Clonar o Repositório
 
 ```bash
-git clone <repo-url> /opt/tx-home
-cd /opt/tx-home
+git clone <repo-url> /opt/<app-name>
+cd /opt/<app-name>
 ```
 
 ---
@@ -66,8 +66,8 @@ Editar `docker/postgres.env`:
 
 | Variável            | Valor de Produção      | Notas                           |
 | ------------------- | ---------------------- | ------------------------------- |
-| `POSTGRES_DB`       | `tx_home`              | Nome da base de dados           |
-| `POSTGRES_USER`     | `tx_home`              | Utilizador do PostgreSQL        |
+| `POSTGRES_DB`       | `app_db`              | Nome da base de dados           |
+| `POSTGRES_USER`     | `app_db`              | Utilizador do PostgreSQL        |
 | `POSTGRES_PASSWORD` | **gerar — ver abaixo** | Mínimo 32 caracteres, aleatório |
 
 ### `docker/mongo.env`
@@ -80,9 +80,9 @@ Editar `docker/mongo.env`:
 
 | Variável                     | Valor de Produção      | Notas                           |
 | ---------------------------- | ---------------------- | ------------------------------- |
-| `MONGO_INITDB_ROOT_USERNAME` | `tx_home`              | Utilizador root do MongoDB      |
+| `MONGO_INITDB_ROOT_USERNAME` | `app_db`              | Utilizador root do MongoDB      |
 | `MONGO_INITDB_ROOT_PASSWORD` | **gerar — ver abaixo** | Mínimo 32 caracteres, aleatório |
-| `MONGO_INITDB_DATABASE`      | `tx_home`              | Base de dados inicial           |
+| `MONGO_INITDB_DATABASE`      | `app_db`              | Base de dados inicial           |
 
 ### Gerar passwords seguras
 
@@ -113,11 +113,11 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | ---------------------- | --------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------- |
 | `NODE_ENV`             | `production`                                                          | ✅          |                                                                      |
 | `PORT`                 | `3000`                                                                | ✅          |                                                                      |
-| `DATABASE_URL`         | `postgres://tx_home:<PG_PASS>@postgres:5432/tx_home?schema=public`    | ✅          | Host `postgres` = nome do serviço Docker                             |
+| `DATABASE_URL`         | `postgres://app_db:<PG_PASS>@postgres:5432/app_db?schema=public`    | ✅          | Host `postgres` = nome do serviço Docker                             |
 | `REDIS_HOST`           | `redis`                                                               | ✅          | Nome do serviço Docker                                               |
 | `REDIS_PORT`           | `6379`                                                                | ✅          |                                                                      |
 | `REDIS_PASSWORD`       | `<REDIS_PASS>`                                                        | ⚠️ opcional | Definir se Redis tiver auth ativada                                  |
-| `MONGO_URI`            | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          | Host `mongo` = nome do serviço Docker                                |
+| `MONGO_URI`            | `mongodb://app_db:<MONGO_PASS>@mongo:27017/app_db?authSource=admin` | ✅          | Host `mongo` = nome do serviço Docker                                |
 | `BETTER_AUTH_SECRET`   | `<gerar com openssl rand -base64 32>`                                 | ✅          | **Mínimo 32 caracteres. Igual em todos os serviços.**                |
 | `BETTER_AUTH_URL`      | `https://<dominio-auth>/api/auth`                                     | ✅          | URL pública **https** do endpoint de auth — o prefixo `Secure` do cookie deriva disto, nunca dos headers do proxy |
 | `UI_URL`               | `https://<dominio-frontend>`                                          | ✅          | URL do frontend — usado para links de email (reset password, verify) |
@@ -137,17 +137,15 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | -------------------- | --------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
 | `NODE_ENV`           | `production`                                                          | ✅          |                                                                                                                 |
 | `PORT`               | `3100`                                                                | ✅          |                                                                                                                 |
-| `DATABASE_URL`       | `postgres://tx_home:<PG_PASS>@postgres:5432/tx_home?schema=public`    | ✅          |                                                                                                                 |
+| `DATABASE_URL`       | `postgres://app_db:<PG_PASS>@postgres:5432/app_db?schema=public`    | ✅          |                                                                                                                 |
 | `REDIS_HOST`         | `redis`                                                               | ✅          |                                                                                                                 |
 | `REDIS_PORT`         | `6379`                                                                | ✅          |                                                                                                                 |
 | `REDIS_PASSWORD`     | `<REDIS_PASS>`                                                        | ⚠️ opcional |                                                                                                                 |
-| `MONGO_URI`          | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |                                                                                                                 |
+| `MONGO_URI`          | `mongodb://app_db:<MONGO_PASS>@mongo:27017/app_db?authSource=admin` | ✅          |                                                                                                                 |
 | `BETTER_AUTH_SECRET` | `<mesmo valor que apps/auth>`                                         | ✅          | **Tem de ser igual ao da app auth**                                                                             |
 | `BETTER_AUTH_URL`    | `https://<dominio-auth>/api/auth`                                     | ✅          |                                                                                                                 |
 | `CORS_ORIGIN`        | `https://<dominio-frontend>`                                          | ✅          |                                                                                                                 |
 | `ENCRYPTION_KEY`     | `<mesmo valor que apps/auth>`                                         | ✅          | **Tem de ser igual em todos os serviços**                                                                       |
-| `UPLISTING_URL`      | `https://connect.uplisting.io`                                        | ✅          | URL base da API Uplisting — não alterar                                                                         |
-| `PUBLIC_API_URL`     | `https://<dominio-frontend>`                                          | ✅          | URL pública da API — usada para construir URLs de webhooks. **A app falha ao iniciar se não estiver definida.** |
 
 ---
 
@@ -157,11 +155,11 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | ---------------- | --------------------------------------------------------------------- | ----------- | ----- |
 | `NODE_ENV`       | `production`                                                          | ✅          |       |
 | `PORT`           | `3300`                                                                | ✅          |       |
-| `DATABASE_URL`   | `postgres://tx_home:<PG_PASS>@postgres:5432/tx_home?schema=public`    | ✅          |       |
+| `DATABASE_URL`   | `postgres://app_db:<PG_PASS>@postgres:5432/app_db?schema=public`    | ✅          |       |
 | `REDIS_HOST`     | `redis`                                                               | ✅          |       |
 | `REDIS_PORT`     | `6379`                                                                | ✅          |       |
 | `REDIS_PASSWORD` | `<REDIS_PASS>`                                                        | ⚠️ opcional |       |
-| `MONGO_URI`      | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |       |
+| `MONGO_URI`      | `mongodb://app_db:<MONGO_PASS>@mongo:27017/app_db?authSource=admin` | ✅          |       |
 | `CORS_ORIGIN`    | `https://<dominio-frontend>`                                          | ✅          |       |
 | `ENCRYPTION_KEY` | `<mesmo valor que apps/auth>`                                         | ✅          |       |
 
@@ -173,17 +171,16 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | ---------------- | --------------------------------------------------------------------- | ----------- | --------------------------------------------------------- |
 | `NODE_ENV`       | `production`                                                          | ✅          |                                                           |
 | `PORT`           | `3400`                                                                | ✅          |                                                           |
-| `DATABASE_URL`   | `postgres://tx_home:<PG_PASS>@postgres:5432/tx_home?schema=public`    | ✅          |                                                           |
+| `DATABASE_URL`   | `postgres://app_db:<PG_PASS>@postgres:5432/app_db?schema=public`    | ✅          |                                                           |
 | `REDIS_HOST`     | `redis`                                                               | ✅          |                                                           |
 | `REDIS_PORT`     | `6379`                                                                | ✅          |                                                           |
 | `REDIS_PASSWORD` | `<REDIS_PASS>`                                                        | ⚠️ opcional |                                                           |
-| `MONGO_URI`      | `mongodb://tx_home:<MONGO_PASS>@mongo:27017/tx_home?authSource=admin` | ✅          |                                                           |
+| `MONGO_URI`      | `mongodb://app_db:<MONGO_PASS>@mongo:27017/app_db?authSource=admin` | ✅          |                                                           |
 | `CORS_ORIGIN`    | `https://<dominio-frontend>`                                          | ✅          |                                                           |
 | `ENCRYPTION_KEY` | `<mesmo valor que apps/auth>`                                         | ✅          |                                                           |
-| `UPLISTING_URL`  | `https://connect.uplisting.io`                                        | ✅          |                                                           |
 | `BREVO_API_KEY`  | `<API key do Brevo>`                                                  | ✅          | Obter em app.brevo.com → API Keys                         |
 | `FROM_EMAIL`     | `noreply@<dominio-frontend>`                                                   | ✅          | Endereço de email remetente                               |
-| `FROM_NAME`      | `TX Home`                                                             | ✅          | Nome do remetente nos emails                              |
+| `FROM_NAME`      | `<Nome da App>`                                                       | ✅          | Nome do remetente nos emails                              |
 | `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Em produção pode ficar em branco ou igual ao `FROM_EMAIL` |
 
 ---
@@ -224,7 +221,7 @@ Exemplo mínimo de configuração de produção para o serviço `auth`:
 
 ```yaml
 auth:
-  image: tx-home-auth:latest # ou build com target: production
+  image: <app-name>-auth:latest # ou build com target: production
   build:
     context: .
     dockerfile: ./apps/auth/Dockerfile
@@ -257,7 +254,7 @@ auth:
 
 Repetir o padrão para `api` (porta 3100), `cron` (porta 3200), `notifications` (porta 3300), `worker` (porta 3400) e `web` (porta 8080 → exposta conforme o reverse proxy).
 
-> Para os volumes do PostgreSQL e MongoDB em produção, substituir os caminhos absolutos locais (`/Volumes/SSD-DEV/...`) por caminhos no servidor, por exemplo `/data/tx-home/postgres` e `/data/tx-home/mongo`.
+> Para os volumes do PostgreSQL e MongoDB em produção, substituir os caminhos absolutos locais (`/Volumes/SSD-DEV/...`) por caminhos no servidor, por exemplo `/data/<app-name>/postgres` e `/data/<app-name>/mongo`.
 
 ---
 
@@ -296,7 +293,7 @@ As migrações têm de ser corridas **antes** de iniciar as apps, a partir da m�
 
 ```bash
 # Com DATABASE_URL apontado para a BD de produção
-export DATABASE_URL="postgres://tx_home:<PG_PASS>@<host>:5432/tx_home?schema=public"
+export DATABASE_URL="postgres://app_db:<PG_PASS>@<host>:5432/app_db?schema=public"
 
 pnpm db:generate   # Gerar cliente Prisma
 pnpm db:migrate    # Aplicar migrações
@@ -381,7 +378,6 @@ Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `C
 - [ ] `REDIS_HOST` é `redis` (nome do serviço Docker) em todos os serviços
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
-- [ ] `PUBLIC_API_URL` definida em `apps/api` com URL pública HTTPS
 - [ ] `UI_URL` definida em `apps/auth` com URL pública HTTPS do frontend
 - [ ] `BREVO_API_KEY` válida em `apps/worker`
 - [ ] Infraestrutura iniciada e healthchecks a passar

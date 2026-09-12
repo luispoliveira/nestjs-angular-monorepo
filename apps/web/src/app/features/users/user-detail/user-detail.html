@@ -21,6 +21,7 @@
           <p class="mt-1 text-sm text-gray-500">Member since {{ u.createdAt | date: 'mediumDate' }}</p>
         </div>
         <div class="flex flex-col gap-2 sm:flex-row">
+          <button mat-stroked-button type="button" (click)="editUser()" data-testid="edit-user-action">Edit</button>
           <button mat-stroked-button type="button" (click)="setPassword()" data-testid="set-password-action">
             Set password
           </button>

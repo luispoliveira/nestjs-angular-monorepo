@@ -93,7 +93,7 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
 
                 const uiUrl =
                   configService.get<string>('UI_URL') ??
-                  'http://localhost:8080';
+                  'http://localhost:4200';
                 const resetUrl = `${uiUrl}/reset-password?token=${token}`;
                 const expiresAt = new Date(
                   Date.now() + 60 * 60 * 1000,
@@ -136,7 +136,7 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
 
                 const uiUrl =
                   configService.get<string>('UI_URL') ??
-                  'http://localhost:8080';
+                  'http://localhost:4200';
 
                 const verificationUrl = `${uiUrl}/verify-email?token=${token}`;
 

@@ -82,4 +82,85 @@
       </mat-card-actions>
     </form>
   </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Two-factor authentication</mat-card-title>
+      <mat-card-subtitle>
+        @if (twoFactorEnabled()) {
+          Enabled — an authenticator app code is required at sign-in.
+        } @else {
+          Disabled — add an authenticator app for an extra sign-in step.
+        }
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-actions align="end">
+      @if (twoFactorEnabled()) {
+        <button mat-stroked-button type="button" (click)="openRegenerateBackupCodes()" data-testid="regenerate-backup-codes-action">
+          Regenerate backup codes
+        </button>
+        <button mat-stroked-button type="button" (click)="openDisableTwoFactor()" data-testid="disable-2fa-action">
+          Disable
+        </button>
+      } @else {
+        <button mat-flat-button type="button" (click)="openEnableTwoFactor()" data-testid="enable-2fa-action">
+          Enable
+        </button>
+      }
+    </mat-card-actions>
+  </mat-card>
+
+  <mat-card data-testid="account-sessions">
+    <mat-card-header class="w-full">
+      <div class="flex w-full items-center justify-between">
+        <div>
+          <mat-card-title>Active sessions</mat-card-title>
+          <mat-card-subtitle>Devices currently signed in to your account</mat-card-subtitle>
+        </div>
+        @if (sessions().length > 1) {
+          <button mat-stroked-button type="button" (click)="revokeOtherSessions()" data-testid="revoke-other-sessions">
+            Sign out other sessions
+          </button>
+        }
+      </div>
+    </mat-card-header>
+    <mat-card-content class="flex flex-col gap-2">
+      @if (sessions().length === 0) {
+        <p data-testid="no-sessions">No active sessions.</p>
+      } @else {
+        @for (item of sessions(); track item.id) {
+          <div class="session-row" [attr.data-testid]="'session-row-' + item.id">
+            <span>
+              {{ item.ipAddress ?? 'Unknown IP' }} — expires {{ item.expiresAt | date: 'medium' }}
+              @if (item.token === currentSessionToken()) {
+                <strong>(this device)</strong>
+              }
+            </span>
+            @if (item.token !== currentSessionToken()) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="revokeSession(item.token)"
+                [attr.data-testid]="'revoke-session-' + item.id"
+              >
+                Revoke
+              </button>
+            }
+          </div>
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Danger zone</mat-card-title>
+      <mat-card-subtitle>Permanently delete your account and all of its data.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-actions align="end">
+      <button mat-stroked-button color="warn" type="button" (click)="openDeleteAccount()" data-testid="delete-account-action">
+        Delete account
+      </button>
+    </mat-card-actions>
+  </mat-card>
 </div>

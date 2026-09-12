@@ -1,0 +1,45 @@
+@if (backupCodes(); as codes) {
+  <h2 mat-dialog-title>New backup codes</h2>
+  <mat-dialog-content>
+    <p class="text-sm text-gray-500">
+      Save these somewhere safe — your old backup codes no longer work. Each code can be used once.
+    </p>
+    <div class="flex items-start gap-2">
+      <ul class="flex-1" data-testid="backup-codes">
+        @for (code of codes; track code) {
+          <li><code>{{ code }}</code></li>
+        }
+      </ul>
+      <button mat-icon-button type="button" aria-label="Copy backup codes" (click)="copyBackupCodes()">
+        <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-flat-button type="button" (click)="close()">Done</button>
+  </mat-dialog-actions>
+} @else {
+  <h2 mat-dialog-title>Regenerate backup codes</h2>
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <mat-dialog-content class="flex flex-col gap-2">
+      <p>Confirm your password. Your existing backup codes will stop working.</p>
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" data-testid="password-input" />
+        @if (form.controls.password.errors?.['zod']; as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+
+      @if (serverError(); as error) {
+        <p role="alert" data-testid="server-error">{{ error }}</p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" (click)="close()" [disabled]="submitting()">Cancel</button>
+      <button mat-flat-button type="submit" [disabled]="submitting()" data-testid="submit-button">
+        {{ submitting() ? 'Generating…' : 'Regenerate' }}
+      </button>
+    </mat-dialog-actions>
+  </form>
+}

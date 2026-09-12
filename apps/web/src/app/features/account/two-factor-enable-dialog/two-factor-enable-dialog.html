@@ -1,0 +1,74 @@
+@if (step() === 'password') {
+  <h2 mat-dialog-title>Enable two-factor authentication</h2>
+  <form [formGroup]="passwordForm" (ngSubmit)="onSubmitPassword()">
+    <mat-dialog-content class="flex flex-col gap-2">
+      <p>Confirm your password to start setup.</p>
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" data-testid="password-input" />
+        @if (passwordForm.controls.password.errors?.['zod']; as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+
+      @if (passwordError(); as error) {
+        <p role="alert" data-testid="password-error">{{ error }}</p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" (click)="close()" [disabled]="submittingPassword()">Cancel</button>
+      <button mat-flat-button type="submit" [disabled]="submittingPassword()" data-testid="continue-button">
+        {{ submittingPassword() ? 'Verifying…' : 'Continue' }}
+      </button>
+    </mat-dialog-actions>
+  </form>
+} @else {
+  <h2 mat-dialog-title>Scan or enter this key</h2>
+  <mat-dialog-content class="flex flex-col gap-4">
+    <div>
+      <p class="text-sm text-gray-500">Scan this QR code with your authenticator app:</p>
+      @if (qrCodeDataUrl(); as qr) {
+        <img [src]="qr" alt="Two-factor authentication QR code" width="200" height="200" data-testid="qr-code" />
+      }
+      <p class="text-sm text-gray-500">Or enter this key manually:</p>
+      <code class="break-all" data-testid="setup-key">{{ setupKey() }}</code>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500">
+        Save these backup codes somewhere safe. Each can be used once if you lose access to your authenticator app.
+      </p>
+      <div class="flex items-start gap-2">
+        <ul class="flex-1" data-testid="backup-codes">
+          @for (code of backupCodes(); track code) {
+            <li><code>{{ code }}</code></li>
+          }
+        </ul>
+        <button mat-icon-button type="button" aria-label="Copy backup codes" (click)="copyBackupCodes()">
+          <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <form [formGroup]="codeForm" (ngSubmit)="onSubmitCode()" class="flex flex-col gap-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Code from your authenticator app</mat-label>
+        <input matInput formControlName="code" data-testid="code-input" />
+        @if (codeForm.controls.code.errors?.['zod']; as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
+
+      @if (confirmError(); as error) {
+        <p role="alert" data-testid="confirm-error">{{ error }}</p>
+      }
+
+      <div class="flex justify-end gap-2">
+        <button mat-button type="button" (click)="close()" [disabled]="submittingCode()">Cancel</button>
+        <button mat-flat-button type="submit" [disabled]="submittingCode()" data-testid="verify-button">
+          {{ submittingCode() ? 'Verifying…' : 'Verify and enable' }}
+        </button>
+      </div>
+    </form>
+  </mat-dialog-content>
+}

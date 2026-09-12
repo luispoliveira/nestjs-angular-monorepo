@@ -1,0 +1,17 @@
+<div class="mx-auto flex max-w-sm flex-col gap-4 p-6">
+  <h1 class="text-xl font-semibold">Email verification</h1>
+
+  @if (verifying()) {
+    <mat-spinner diameter="32" data-testid="verifying-spinner" />
+  } @else if (errorMessage(); as message) {
+    <p class="text-sm text-red-600" role="alert" data-testid="error-message">{{ message }}</p>
+    <button mat-raised-button color="primary" type="button" (click)="goToSignIn()" data-testid="go-to-sign-in">
+      Go to sign in
+    </button>
+  } @else {
+    <p class="text-sm text-gray-500" data-testid="success-message">Your email has been verified. You can now sign in.</p>
+    <button mat-raised-button color="primary" type="button" (click)="goToSignIn()" data-testid="go-to-sign-in">
+      Go to sign in
+    </button>
+  }
+</div>

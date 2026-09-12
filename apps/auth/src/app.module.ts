@@ -79,6 +79,12 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
               // when `sendChangeEmailConfirmation` isn't set (confirmed
               // against better-auth's own `api/routes/update-user.mjs`).
               changeEmail: { enabled: true },
+              // Self-service account deletion (`authClient.deleteUser`) is
+              // disabled by default in better-auth — opt in explicitly. No
+              // `sendDeleteAccountVerification` hook: deletion requires the
+              // current password and happens immediately, same trade-off as
+              // admin's set-password-dialog bypassing the reset-email flow.
+              deleteUser: { enabled: true },
             },
             emailAndPassword: {
               enabled: true,

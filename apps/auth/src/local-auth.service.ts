@@ -56,52 +56,59 @@ export class LocalAuthService implements OnModuleInit {
     this.logger.log(`Admin user created with email ${adminEmail}.`);
   }
 
-  @nestjsBetterAuth.AfterHook('/change-password')
-  async handlePasswordChanged(ctx: nestjsBetterAuth.AuthHookContext) {
-    const session = await this.authService.api.getSession({
-      headers: ctx.headers as Headers,
-    });
-
-    if (!session || !session.user) {
+  /**
+   * Reads the affected user off the hook's own request context instead of
+   * re-fetching the session by the request's original cookie header. All
+   * three self-service callers below can rotate or delete that exact
+   * session as part of the handler that runs just before this hook fires —
+   * `/change-password` with `revokeOtherSessions: true` deletes *every*
+   * session for the user (not just the "other" ones) and mints a
+   * replacement, `/two-factor/disable` always rotates the session, and
+   * `/two-factor/enable`'s TOTP path (the default, no `skipVerificationOnEnable`)
+   * does not rotate at all — so `getSession(ctx.headers)` intermittently
+   * threw "Session not found" once the DB write it was fetching against no
+   * longer existed. `ctx.context.newSession` is what better-auth's own
+   * `setSessionCookie` populates for the current dispatch when a handler
+   * rotates the session (confirmed against `cookies/index.mjs`); it falls
+   * back to `ctx.context.session`, the session that authorized this request
+   * in the first place, when no rotation happened.
+   */
+  private currentUser(ctx: nestjsBetterAuth.AuthHookContext) {
+    const session = ctx.context.newSession ?? ctx.context.session;
+    if (!session?.user) {
       throw new Error('Session not found');
     }
+    return session.user;
+  }
+
+  @nestjsBetterAuth.AfterHook('/change-password')
+  handlePasswordChanged(ctx: nestjsBetterAuth.AuthHookContext) {
+    const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserPasswordChanged({
-      userId: session.user.id,
-      email: session.user.email,
+      userId: user.id,
+      email: user.email,
       reason: 'User changed password',
     });
   }
 
   @nestjsBetterAuth.AfterHook('/two-factor/enable')
-  async handleTwoFactorEnabled(ctx: nestjsBetterAuth.AuthHookContext) {
-    const session = await this.authService.api.getSession({
-      headers: ctx.headers as Headers,
-    });
-
-    if (!session || !session.user) {
-      throw new Error('Session not found');
-    }
+  handleTwoFactorEnabled(ctx: nestjsBetterAuth.AuthHookContext) {
+    const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserTwoFactorEnabled({
-      userId: session.user.id,
-      email: session.user.email,
+      userId: user.id,
+      email: user.email,
     });
   }
 
   @nestjsBetterAuth.AfterHook('/two-factor/disable')
-  async handleTwoFactorDisabled(ctx: nestjsBetterAuth.AuthHookContext) {
-    const session = await this.authService.api.getSession({
-      headers: ctx.headers as Headers,
-    });
-
-    if (!session || !session.user) {
-      throw new Error('Session not found');
-    }
+  handleTwoFactorDisabled(ctx: nestjsBetterAuth.AuthHookContext) {
+    const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserTwoFactorDisabled({
-      userId: session.user.id,
-      email: session.user.email,
+      userId: user.id,
+      email: user.email,
     });
   }
 

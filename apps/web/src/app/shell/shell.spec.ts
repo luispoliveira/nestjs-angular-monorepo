@@ -5,15 +5,34 @@ import { Shell } from './shell';
 
 type SessionValue = SessionAtomClient['useSession'] extends { get(): infer T } ? T : never;
 
-function createFakeSessionAtom(value: SessionValue) {
+// Mutable so a signOut mock can flip it to unauthenticated and notify
+// subscribers — matching better-auth's real atom, whose session refetch
+// after sign-out updates `data` asynchronously (see SessionService.signedOut).
+function createFakeSessionAtom(initial: SessionValue) {
+  let value = initial;
+  const listeners = new Set<(v: SessionValue) => void>();
   return {
-    get: () => value,
-    subscribe(listener: (v: SessionValue) => void) {
-      listener(value);
-      return () => undefined;
+    atom: {
+      get: () => value,
+      subscribe(listener: (v: SessionValue) => void) {
+        listeners.add(listener);
+        listener(value);
+        return () => listeners.delete(listener);
+      },
+    } as unknown as SessionAtomClient['useSession'],
+    set(next: SessionValue) {
+      value = next;
+      listeners.forEach((listener) => listener(value));
     },
-  } as unknown as SessionAtomClient['useSession'];
+  };
 }
+
+const signedOutValue: SessionValue = {
+  data: null,
+  error: null,
+  isPending: false,
+  isRefetching: false,
+} as SessionValue;
 
 function sessionOf(role: 'admin' | 'user', name = 'Ada Lovelace', impersonatedBy?: string): SessionValue {
   return {
@@ -28,13 +47,17 @@ function sessionOf(role: 'admin' | 'user', name = 'Ada Lovelace', impersonatedBy
 }
 
 function setUp(role: 'admin' | 'user', options?: { impersonatedBy?: string; stopImpersonating?: () => Promise<unknown> }) {
+  const { atom, set } = createFakeSessionAtom(sessionOf(role, undefined, options?.impersonatedBy));
   TestBed.configureTestingModule({
     providers: [
       {
         provide: AUTH_CLIENT,
         useValue: {
-          useSession: createFakeSessionAtom(sessionOf(role, undefined, options?.impersonatedBy)),
-          signOut: async () => ({}),
+          useSession: atom,
+          signOut: async () => {
+            set(signedOutValue);
+            return {};
+          },
           admin: { stopImpersonating: options?.stopImpersonating ?? (async () => ({})) },
         },
       },

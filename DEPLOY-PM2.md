@@ -31,8 +31,8 @@ Instalar PostgreSQL, Redis e MongoDB no servidor ou apontar para instâncias ger
 ```bash
 sudo apt install postgresql postgresql-contrib
 
-sudo -u postgres psql -c "CREATE USER tx_home WITH PASSWORD '<PG_PASS>';"
-sudo -u postgres psql -c "CREATE DATABASE tx_home OWNER tx_home;"
+sudo -u postgres psql -c "CREATE USER app_db WITH PASSWORD '<PG_PASS>';"
+sudo -u postgres psql -c "CREATE DATABASE app_db OWNER app_db;"
 ```
 
 ### Redis
@@ -57,8 +57,8 @@ sudo systemctl enable --now mongod
 
 # Criar utilizador
 mongosh --eval "
-  db = db.getSiblingDB('tx_home');
-  db.createUser({ user: 'tx_home', pwd: '<MONGO_PASS>', roles: [{ role: 'readWrite', db: 'tx_home' }] });
+  db = db.getSiblingDB('app_db');
+  db.createUser({ user: 'app_db', pwd: '<MONGO_PASS>', roles: [{ role: 'readWrite', db: 'app_db' }] });
 "
 ```
 
@@ -67,8 +67,8 @@ mongosh --eval "
 ## 2. Clonar o Repositório
 
 ```bash
-git clone <repo-url> /opt/tx-home
-cd /opt/tx-home
+git clone <repo-url> /opt/<app-name>
+cd /opt/<app-name>
 ```
 
 ---
@@ -76,7 +76,7 @@ cd /opt/tx-home
 ## 3. Instalar Dependências e Fazer Build
 
 ```bash
-cd /opt/tx-home
+cd /opt/<app-name>
 
 pnpm install --frozen-lockfile
 
@@ -110,13 +110,13 @@ openssl rand -base64 32   # para ENCRYPTION_KEY  (usar o mesmo valor em todos os
 NODE_ENV=production
 PORT=3000
 
-DATABASE_URL=postgres://tx_home:<PG_PASS>@localhost:5432/tx_home?schema=public
+DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=<REDIS_PASS>
 
-MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
+MONGO_URI=mongodb://app_db:<MONGO_PASS>@127.0.0.1:27017/app_db?authSource=app_db
 
 BETTER_AUTH_SECRET=<gerar com openssl rand -base64 32>
 BETTER_AUTH_URL=https://<dominio-auth>/api/auth
@@ -143,13 +143,13 @@ GOOGLE_CLIENT_SECRET=
 NODE_ENV=production
 PORT=3100
 
-DATABASE_URL=postgres://tx_home:<PG_PASS>@localhost:5432/tx_home?schema=public
+DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=<REDIS_PASS>
 
-MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
+MONGO_URI=mongodb://app_db:<MONGO_PASS>@127.0.0.1:27017/app_db?authSource=app_db
 
 BETTER_AUTH_SECRET=<mesmo valor que apps/auth>
 BETTER_AUTH_URL=https://<dominio-auth>/api/auth
@@ -157,10 +157,6 @@ BETTER_AUTH_URL=https://<dominio-auth>/api/auth
 CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
-
-UPLISTING_URL=https://connect.uplisting.io
-
-PUBLIC_API_URL=https://<dominio-frontend>
 ```
 
 ---
@@ -171,13 +167,13 @@ PUBLIC_API_URL=https://<dominio-frontend>
 NODE_ENV=production
 PORT=3300
 
-DATABASE_URL=postgres://tx_home:<PG_PASS>@localhost:5432/tx_home?schema=public
+DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=<REDIS_PASS>
 
-MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
+MONGO_URI=mongodb://app_db:<MONGO_PASS>@127.0.0.1:27017/app_db?authSource=app_db
 
 CORS_ORIGIN=https://<dominio-frontend>
 
@@ -192,23 +188,21 @@ ENCRYPTION_KEY=<mesmo valor que apps/auth>
 NODE_ENV=production
 PORT=3400
 
-DATABASE_URL=postgres://tx_home:<PG_PASS>@localhost:5432/tx_home?schema=public
+DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=<REDIS_PASS>
 
-MONGO_URI=mongodb://tx_home:<MONGO_PASS>@127.0.0.1:27017/tx_home?authSource=tx_home
+MONGO_URI=mongodb://app_db:<MONGO_PASS>@127.0.0.1:27017/app_db?authSource=app_db
 
 CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
-UPLISTING_URL=https://connect.uplisting.io
-
 BREVO_API_KEY=<API key do Brevo>
 FROM_EMAIL=noreply@<dominio-frontend>
-FROM_NAME=TX Home
+FROM_NAME=<Nome da App>
 DEV_EMAIL=
 ```
 
@@ -266,14 +260,14 @@ pm2 set pm2-logrotate:workerInterval 3600
 ## 6. Correr Migrações
 
 ```bash
-cd /opt/tx-home
+cd /opt/<app-name>
 
 # Gerar cliente Prisma
 pnpm db:generate
 
 # Aplicar migrações na BD de produção
 # (usa DATABASE_URL do .env na raiz ou exportar diretamente)
-export DATABASE_URL="postgres://tx_home:<PG_PASS>@localhost:5432/tx_home?schema=public"
+export DATABASE_URL="postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public"
 pnpm db:migrate
 
 # Criar utilizador admin (usa ADMIN_EMAIL e ADMIN_PASSWORD do .env do auth)
@@ -285,7 +279,7 @@ pnpm db:seed
 ## 7. Iniciar os Serviços com PM2
 
 ```bash
-cd /opt/tx-home
+cd /opt/<app-name>
 
 # Produção
 pm2 start ecosystem.config.js --env production
@@ -351,7 +345,7 @@ sudo apt install nginx
 ```bash
 sudo cp docs/deploy/nginx/frontend.conf /etc/nginx/sites-available/frontend
 sudo cp docs/deploy/nginx/auth.conf     /etc/nginx/sites-available/auth
-# substituir <dominio-frontend>, <dominio-auth> e <root-path> (ex: /opt/tx-home/apps/web/dist/web/browser)
+# substituir <dominio-frontend>, <dominio-auth> e <root-path> (ex: /opt/<app-name>/apps/web/dist/web/browser)
 sudo ln -s /etc/nginx/sites-available/frontend /etc/nginx/sites-enabled/frontend
 sudo ln -s /etc/nginx/sites-available/auth     /etc/nginx/sites-enabled/auth
 sudo nginx -t
@@ -366,7 +360,7 @@ sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ## 10. Workflow de Deploy de Atualizações
 
 ```bash
-cd /opt/tx-home
+cd /opt/<app-name>
 
 # 1. Buscar código novo
 git pull origin main
@@ -399,7 +393,6 @@ pm2 reload all
 - [ ] `ENCRYPTION_KEY` igual em `auth`, `api`, `notifications` e `worker`
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
-- [ ] `PUBLIC_API_URL` definida em `apps/api`
 - [ ] `UI_URL` definida em `apps/auth`
 - [ ] `BREVO_API_KEY` válida em `apps/worker`
 - [ ] `pnpm build` executado com sucesso

@@ -1,4 +1,4 @@
-import { INestApplication, VersioningType } from '@nestjs/common';
+import { INestApplication, Logger, VersioningType } from '@nestjs/common';
 import { ApplicationConfig } from '@nestjs/core';
 import { mapToExcludeRoute } from '@nestjs/core/middleware/utils.js';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -120,10 +120,20 @@ export class BootstrapUtil {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(swaggerConfig.path, app, cleanupOpenApiDoc(document), {
-      useGlobalPrefix: true,
-      jsonDocumentUrl: `${swaggerConfig.path}-json`,
-    });
+    try {
+      // ponytail: nestjs-zod can emit a self-referencing $ref stub for a
+      // paginated/codec-wrapped schema on some passes, which cleanupOpenApiDoc
+      // rejects as a duplicate ("Found multiple schemas with name ..."). Docs
+      // generation failing shouldn't crash the whole app boot.
+      SwaggerModule.setup(swaggerConfig.path, app, cleanupOpenApiDoc(document), {
+        useGlobalPrefix: true,
+        jsonDocumentUrl: `${swaggerConfig.path}-json`,
+      });
+    } catch (error) {
+      new Logger(BootstrapUtil.name).warn(
+        `Swagger setup failed, continuing without API docs: ${(error as Error).message}`,
+      );
+    }
   }
 
   private static enableCookieParser(

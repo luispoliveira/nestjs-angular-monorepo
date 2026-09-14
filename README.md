@@ -19,7 +19,7 @@ A production-ready, full-stack monorepo template combining NestJS microservices 
 | Email             | Brevo (via `@getbrevo/brevo`)                       |
 | Logging           | `nestjs-pino` with correlation IDs via `nestjs-cls` |
 | Health            | `@nestjs/terminus`                                  |
-| Observability     | Prometheus + Grafana (local docker-compose stack)   |
+| Observability     | Prometheus + Grafana + Loki (local docker-compose stack) |
 
 ## Workspace Structure
 
@@ -449,10 +449,11 @@ All NestJS apps expose:
 
 ## Observability
 
-`pnpm docker:up` starts a local Prometheus + Grafana stack alongside the usual infra:
+`pnpm docker:up` starts a local Prometheus + Grafana + Loki stack alongside the usual infra:
 
 - **Prometheus** (<http://localhost:9090>) scrapes `/api/metrics` on all five NestJS apps (`auth`, `api`, `cron`, `notifications`, `worker`) via `host.docker.internal`. Scrape config: [docker/prometheus/prometheus.yml](docker/prometheus/prometheus.yml).
-- **Grafana** (<http://localhost:3333>, default login `admin` / `admin`) comes with a Prometheus datasource pre-provisioned from [docker/grafana/provisioning/](docker/grafana/provisioning/).
+- **Loki** (<http://localhost:3101> on the host — `apps/api` already uses 3100; the container-internal port stays 3100) stores logs; **Alloy** tails the PM2-managed apps' log files (`./logs/<app>-{out,error}.log`, see [ecosystem.config.js](ecosystem.config.js)) and ships them to Loki, labelling each line with `app`/`stream` parsed from the filename. Config: [docker/alloy/config.alloy](docker/alloy/config.alloy). Nothing to tail in local dev, where apps run via `pnpm dev` on the host instead of under PM2.
+- **Grafana** (<http://localhost:3333>, default login `admin` / `admin`) comes with Prometheus and Loki datasources pre-provisioned from [docker/grafana/provisioning/](docker/grafana/provisioning/).
 
 > **Linux only:** Docker on Linux doesn't resolve `host.docker.internal` by default. Add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `prometheus` service in `docker-compose.yaml`.
 

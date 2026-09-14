@@ -2,7 +2,7 @@ packages:
   - 'apps/*'
   - 'packages/*'
 overrides:
-  zod: '~4.4.3'
+  zod: '~4.6.0'
 allowBuilds:
   '@nestjs/core': true
   '@prisma/engines': true
@@ -15,3 +15,5 @@ allowBuilds:
   sharp: true
   ssh2: true
   unrs-resolver: true
+patchedDependencies:
+  nestjs-zod@5.5.0: patches/nestjs-zod@5.5.0.patch

@@ -17,13 +17,13 @@
 - [x] 2.4 feat(shared): add `"./sentry"` to `packages/shared/package.json` `exports` → `dist/utils/sentry.util.{js,d.ts}`. Verify: after `pnpm --filter @repo/shared build`, `node -e "require('@repo/shared/sentry'); console.log(Object.keys(require.cache).some(k=>k.includes('@nestjs/core')))"` run from `apps/api` prints `false`.
 - [x] 2.5 feat(shared): import `SentryModule.forRoot()` (from `@sentry/nestjs/setup`) first in `SharedModule.register()`'s imports; do **not** add `SentryGlobalFilter`. Verify: `shared.module` spec (or a new one) asserts `SentryModule` is among the registered imports; `AllExceptionFilter` specs still pass.
 - [x] 2.6 docs(shared): update the NestJS `main.ts` guidance in `CLAUDE.md` and `.github/instructions/nestjs-conventions.instructions.md` to show `import './instrument';` as the first line and `src/instrument.ts`; add a `.claude/CORNER_CASES.md` entry ("Sentry must init before any import; `.env` isn't loaded yet at that point"). Verify: docs reference `@repo/shared/sentry`.
-- [ ] 2.7 chore: commit group 2 with `/commit` (e.g. `feat(shared): enable sentry automatic tracing`).
+- [x] 2.7 chore: commit group 2 with `/commit` (e.g. `feat(shared): enable sentry automatic tracing`).
 
 ## 3. feat(apps): load Sentry before every other module
 
-- [ ] 3.1 feat(api,auth,notifications,worker,cron): add `src/instrument.ts` (`import { SentryUtil } from '@repo/shared/sentry'; SentryUtil.init('<app>');`), make `import './instrument';` the first line of each `src/main.ts` with a "must stay first" comment, and remove `SentryUtil.init(...)` from `bootstrap()`. Verify: `pnpm build` passes; `grep -n "SentryUtil.init" apps/*/src/main.ts` is empty.
-- [ ] 3.2 test(api,auth,notifications,worker,cron): add a small spec per app that reads `src/main.ts` and asserts its first import statement is `./instrument`. Verify: `pnpm test` passes; moving the import down makes the spec fail.
-- [ ] 3.3 docs(apps): in each backend `.env.example`, comment `SENTRY_TRACES_SAMPLE_RATE` as "0 disables tracing; e.g. 0.1 in production" (fix the duplicated block in `apps/notifications/.env.example`). Verify: one Sentry block per file.
+- [x] 3.1 feat(api,auth,notifications,worker,cron): add `src/instrument.ts` (`import { SentryUtil } from '@repo/shared/sentry'; SentryUtil.init('<app>');`), make `import './instrument';` the first line of each `src/main.ts` with a "must stay first" comment, and remove `SentryUtil.init(...)` from `bootstrap()`. Verify: `pnpm build` passes; `grep -n "SentryUtil.init" apps/*/src/main.ts` is empty.
+- [x] 3.2 test(api,auth,notifications,worker,cron): add a small spec per app that reads `src/main.ts` and asserts its first import statement is `./instrument`. Verify: `pnpm test` passes; moving the import down makes the spec fail.
+- [x] 3.3 docs(apps): in each backend `.env.example`, comment `SENTRY_TRACES_SAMPLE_RATE` as "0 disables tracing; e.g. 0.1 in production" (fix the duplicated block in `apps/notifications/.env.example`). Verify: one Sentry block per file.
 - [ ] 3.4 chore: commit group 3 with `/commit` (e.g. `feat(api): init sentry before app modules load`).
 
 ## 4. Integration verification

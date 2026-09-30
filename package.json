@@ -20,7 +20,7 @@
     "db:seed": "turbo db:seed",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "update-packages": "npx npm-check-updates -u"
+    "update-packages": "npx npm-check-updates --workspaces --root -u"
   },
   "devDependencies": {
     "prettier": "^3.9.9",

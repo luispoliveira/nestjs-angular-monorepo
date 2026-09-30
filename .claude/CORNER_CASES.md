@@ -158,7 +158,7 @@ Deferred, with the condition that would unblock each:
 
 See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full analysis. `vitest` was unblocked in `update-dependencies-sentry-tracing` once `@angular/build@22.2` accepted `^4 || ^5`.
 
-**Also:** the root `update-packages` script (`npx npm-check-updates -u`) only rewrites the **root** `package.json` — it never touches `apps/*` or `packages/*`. Run `npx npm-check-updates --workspaces --root -u` to upgrade every workspace (it reads the same `.ncurc.json`).
+**Also:** the root `update-packages` script runs `npx npm-check-updates --workspaces --root -u`, so it rewrites the root manifest **and** every `apps/*` / `packages/*` manifest (all read the same `.ncurc.json`). A bare `ncu -u` only touches the root `package.json` — don't drop the flags.
 
 ---
 

@@ -28,9 +28,9 @@
 
 ## 4. update-packages covers every workspace
 
-- [ ] 4.1 chore: root: change `update-packages` to `npx npm-check-updates --workspaces --root -u` — verify `npx npm-check-updates --workspaces --root` (dry run, no `-u`) lists upgrades from `apps/*` / `packages/*` and none for `.ncurc.json`-rejected packages
-- [ ] 4.2 docs: update the "Also:" note under the `update-packages` entry in `.claude/CORNER_CASES.md` to say the script now covers workspaces — verify the note no longer tells the reader to run the flag by hand
-- [ ] 4.3 Commit group 4 with `/commit`
+- [x] 4.1 chore: root: change `update-packages` to `npx npm-check-updates --workspaces --root -u` — verify `npx npm-check-updates --workspaces --root` (dry run, no `-u`) lists upgrades from `apps/*` / `packages/*` and none for `.ncurc.json`-rejected packages
+- [x] 4.2 docs: update the "Also:" note under the `update-packages` entry in `.claude/CORNER_CASES.md` to say the script now covers workspaces — verify the note no longer tells the reader to run the flag by hand
+- [x] 4.3 Commit group 4 with `/commit`
 
 ## 5. Integration verification
 

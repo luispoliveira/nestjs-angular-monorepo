@@ -34,7 +34,7 @@
 
 ## 5. Integration verification
 
-- [ ] 5.1 Run `pnpm build`, `pnpm lint`, `pnpm check-types`, `pnpm test`, and `pnpm --filter auth test:integration && pnpm --filter auth test:e2e` with local infra down — all pass
-- [ ] 5.2 Smoke-test the guard: `pnpm docker:up`, start `apps/api` without `apps/auth`, call a protected route with any bearer token — response is 503 in ≤ ~5 s; start `apps/auth`, repeat with an invalid token — 401
-- [ ] 5.3 Smoke-test probes: with `apps/api` running, hit `/api/health/live` repeatedly — no pino request line on stdout and no new document in the Mongo `logs` collection; hit a normal route — both appear
-- [ ] 5.4 Run `openspec validate harden-tests-guard-and-probes --strict` — passes
+- [x] 5.1 Run `pnpm build`, `pnpm lint`, `pnpm check-types`, `pnpm test`, and `pnpm --filter auth test:integration && pnpm --filter auth test:e2e` with local infra down — all pass
+- [x] 5.2 Smoke-test the guard: `pnpm docker:up`, start `apps/api` without `apps/auth`, call a protected route with any bearer token — response is 503 in ≤ ~5 s; start `apps/auth`, repeat with an invalid token — 401
+- [x] 5.3 Smoke-test probes: with `apps/api` running, hit `/api/health/live` repeatedly — no pino request line on stdout and no new document in the Mongo `logs` collection; hit a normal route — both appear
+- [x] 5.4 Run `openspec validate harden-tests-guard-and-probes --strict` — passes

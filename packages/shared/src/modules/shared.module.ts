@@ -5,6 +5,7 @@ import { TerminusModule } from '@nestjs/terminus';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { DatabaseModule } from '@repo/database';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
@@ -53,6 +54,9 @@ export class SharedModule {
       global: true,
       module: SharedModule,
       imports: [
+        // Names Sentry transactions after Nest routes. No SentryGlobalFilter:
+        // AllExceptionFilter already captures 5xx/RPC errors.
+        SentryModule.forRoot(),
         ConfigModule.forRoot({
           isGlobal: true,
           envFilePath: '.env',

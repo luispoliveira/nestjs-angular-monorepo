@@ -4,10 +4,10 @@ import { Observable, of, throwError } from 'rxjs';
 import { MongoService } from '../mongo/mongo.service';
 import { LoggingInterceptor } from './logging.interceptor';
 
-const makeContext = (responseStatusCode = 200) => {
+const makeContext = (responseStatusCode = 200, url = '/api/test') => {
   const getRequest = jest.fn().mockReturnValue({
     method: 'GET',
-    url: '/api/test',
+    url,
     body: { key: 'value' },
     headers: { authorization: 'Bearer token' },
     ip: '127.0.0.1',
@@ -98,4 +98,20 @@ describe('LoggingInterceptor', () => {
 
     expect(mongoService.updateLog).not.toHaveBeenCalled();
   });
+
+  it.each(['/api/health/live', '/api/health/ready', '/api/metrics?x=1'])(
+    'should skip the Mongo log for probe %s',
+    async (url) => {
+      const handler = makeHandler(of({ status: 'ok' }));
+
+      const result$ = await interceptor.intercept(makeContext(200, url), handler);
+      await new Promise<void>((resolve) =>
+        result$.subscribe({ next: () => resolve(), error: resolve }),
+      );
+
+      expect(handler.handle).toHaveBeenCalled();
+      expect(mongoService.createLog).not.toHaveBeenCalled();
+      expect(mongoService.updateLog).not.toHaveBeenCalled();
+    },
+  );
 });

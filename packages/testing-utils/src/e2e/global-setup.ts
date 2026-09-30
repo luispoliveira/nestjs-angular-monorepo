@@ -16,11 +16,16 @@ export default async function globalSetup(): Promise<void> {
     .withLabels({ [E2E_RUN_LABEL]: runId })
     .start();
 
+  const redis = await new GenericContainer('redis:7-alpine')
+    .withExposedPorts(6379)
+    .withWaitStrategy(Wait.forLogMessage(/Ready to accept connections/))
+    .withLabels({ [E2E_RUN_LABEL]: runId })
+    .start();
+
   const databaseUrl = `${postgres.getConnectionUri()}?schema=public`;
   const mongoUri = `mongodb://${mongo.getHost()}:${mongo.getMappedPort(27017)}`;
 
-  // Reuses the same command scripts/test-db-setup.mjs runs locally, just
-  // pointed at the ephemeral container instead of a fixed database.
+  // Applies the committed migrations to the ephemeral container.
   execSync('pnpm --filter @repo/database db:migrate:deploy', {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: 'inherit',
@@ -29,5 +34,7 @@ export default async function globalSetup(): Promise<void> {
 
   process.env.DATABASE_URL = databaseUrl;
   process.env.MONGO_URI = mongoUri;
+  process.env.REDIS_HOST = redis.getHost();
+  process.env.REDIS_PORT = String(redis.getMappedPort(6379));
   process.env[E2E_CONTAINERS_RUN_ID_ENV] = runId;
 }

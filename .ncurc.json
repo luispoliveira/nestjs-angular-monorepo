@@ -3,7 +3,6 @@
     "typescript",
     "prisma",
     "@prisma/client",
-    "vitest",
     "@nestjs/*",
     "ioredis"
   ]

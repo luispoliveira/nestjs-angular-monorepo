@@ -1,10 +1,9 @@
 import { EnvironmentEnum } from '@repo/shared-types';
 import { IncomingMessage } from 'http';
 import { Params } from 'nestjs-pino';
+import { isSilentPath } from '../constants/observability';
 
 const isProduction = process.env.NODE_ENV === EnvironmentEnum.PRODUCTION;
-
-const SILENT_PATHS = ['/health', '/metrics', '/favicon.ico'];
 
 // For TRPC batch requests show only the procedure name; otherwise strip query string
 function cleanUrl(url: string): string {
@@ -87,7 +86,7 @@ export const pinoConfig: Params = {
     },
 
     autoLogging: {
-      ignore: (req: IncomingMessage) => SILENT_PATHS.includes(req.url ?? ''),
+      ignore: (req: IncomingMessage) => isSilentPath(req.url ?? ''),
     },
 
     redact: {

@@ -1,8 +1,12 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClientProxy } from '@nestjs/microservices';
-import { of, throwError } from 'rxjs';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, NEVER, of, throwError } from 'rxjs';
+import { AUTH_RPC_TIMEOUT_MS } from '../constants';
 import { IS_PUBLIC_KEY } from '../decorators';
 import { ContextUtil } from '../utils';
 import { MicroserviceAuthGuard } from './microservice-auth.guard';
@@ -76,17 +80,49 @@ describe('MicroserviceAuthGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('should throw UnauthorizedException when auth client returns an error', async () => {
-    reflector.getAllAndOverride.mockReturnValue(false);
-    (ContextUtil.extractToken as jest.Mock).mockReturnValue('bad-token');
-    authClient.send.mockReturnValue(
-      throwError(() => new Error('Unauthorized')) as ReturnType<ClientProxy['send']>,
-    );
+  describe('auth service failures', () => {
+    const run = (send: ReturnType<ClientProxy['send']>) => {
+      reflector.getAllAndOverride.mockReturnValue(false);
+      (ContextUtil.extractToken as jest.Mock).mockReturnValue('a-token');
+      authClient.send.mockReturnValue(send);
+      return guard.canActivate(makeContext(false, 'Bearer a-token')) as ReturnType<
+        typeof of
+      >;
+    };
 
-    const context = makeContext(false, 'Bearer bad-token');
-    const result$ = guard.canActivate(context) as ReturnType<typeof of>;
+    it('maps a 401 reply from auth to UnauthorizedException', async () => {
+      const result$ = run(
+        throwError(() => ({ status: 401, message: 'Unauthorized' })) as ReturnType<
+          ClientProxy['send']
+        >,
+      );
 
-    await expect(firstValueFrom(result$)).rejects.toThrow(UnauthorizedException);
+      await expect(firstValueFrom(result$)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('maps a connection error to ServiceUnavailableException', async () => {
+      const result$ = run(
+        throwError(() => new Error('ECONNREFUSED')) as ReturnType<ClientProxy['send']>,
+      );
+
+      await expect(firstValueFrom(result$)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('maps no reply within the bound to ServiceUnavailableException', async () => {
+      jest.useFakeTimers();
+      try {
+        const result$ = run(NEVER as ReturnType<ClientProxy['send']>);
+        const settled = expect(firstValueFrom(result$)).rejects.toThrow(
+          ServiceUnavailableException,
+        );
+        await jest.advanceTimersByTimeAsync(AUTH_RPC_TIMEOUT_MS + 1);
+        await settled;
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   it('should check IS_PUBLIC_KEY on handler and class', () => {

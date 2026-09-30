@@ -25,4 +25,15 @@ describe('pinoConfig', () => {
       expect.objectContaining({ target: 'pino-pretty' }),
     );
   });
+
+  it('autoLogging ignores prefixed probes but not ordinary requests', () => {
+    const { pinoConfig } = require('./pino.config') as typeof import('./pino.config');
+    const autoLogging = pinoConfig.pinoHttp && 'autoLogging' in pinoConfig.pinoHttp
+      ? (pinoConfig.pinoHttp.autoLogging as { ignore: (req: { url?: string }) => boolean })
+      : undefined;
+
+    expect(autoLogging?.ignore({ url: '/api/health/live' })).toBe(true);
+    expect(autoLogging?.ignore({ url: '/api/metrics?x=1' })).toBe(true);
+    expect(autoLogging?.ignore({ url: '/api/users' })).toBe(false);
+  });
 });

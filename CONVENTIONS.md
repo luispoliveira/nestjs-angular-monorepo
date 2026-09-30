@@ -138,7 +138,7 @@ Default job options (set in `QueueModule`):
 ### Logging and Errors
 
 - Use NestJS `Logger` (backed by pino). Never use `console.log` except in `main.ts` startup messages.
-- `LoggingInterceptor` persists HTTP request/response to MongoDB. Skipped for `/health`, `/metrics`, `/favicon.ico`.
+- `LoggingInterceptor` persists HTTP request/response to MongoDB. Skipped (as is pino auto-logging and Sentry tracing) for any path with a `/health`, `/metrics` or `/favicon.ico` segment, e.g. `/api/health/live`, via `isSilentPath` in `constants/observability.ts`.
 - `AllExceptionFilter` returns: `{ statusCode, timestamp, path, message, correlationId }`.
 - Throw standard NestJS HTTP exceptions (`NotFoundException`, `BadRequestException`, etc.). Zod validation errors → 422 via `ZodValidationException`.
 - 5xx errors are automatically captured by Sentry via `AllExceptionFilter`.
@@ -242,13 +242,9 @@ Apps (`apps/auth`, `apps/api`, `apps/cron`, `apps/notifications`, `apps/worker`)
 
 ### Test Database Setup
 
-Integration and E2E tests run against a dedicated `nestjs_test` PostgreSQL database. Run once before the first test suite (or whenever migrations change):
+Integration and E2E tests provision their own disposable PostgreSQL, MongoDB and Redis containers (Testcontainers, via `@repo/testing-utils`' `globalSetup`) and apply the committed Prisma migrations to them on every run. Nothing needs to be set up or running beforehand, and a local database is never touched.
 
-```bash
-pnpm test:db:setup   # creates nestjs_test DB + runs prisma migrate deploy
-```
-
-Prerequisites: Docker stack must be running (`pnpm docker:up`).
+Prerequisite: Docker must be running.
 
 ### Running Tests
 

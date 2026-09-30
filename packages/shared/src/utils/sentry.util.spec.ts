@@ -4,9 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SentryUtil } from './sentry.util';
 
+const setAttributes = jest.fn();
+
 jest.mock('@sentry/nestjs', () => ({
   init: jest.fn(),
   captureException: jest.fn(),
+  getGlobalScope: () => ({ setAttributes }),
 }));
 
 describe('SentryUtil', () => {
@@ -32,6 +35,12 @@ describe('SentryUtil', () => {
           initialScope: expect.objectContaining({ tags: { app: 'my-app' } }),
         }),
       );
+    });
+
+    it('should set the app attribute on the global scope so every span carries it', () => {
+      process.env.SENTRY_DSN = 'https://test@sentry.io/123';
+      SentryUtil.init('my-app');
+      expect(setAttributes).toHaveBeenCalledWith({ app: 'my-app' });
     });
 
     it('should use NODE_ENV as environment when set', () => {
@@ -116,17 +125,23 @@ describe('SentryUtil', () => {
       ).toBe(0.25);
     });
 
-    it.each(['/health/live', '/health/ready', '/metrics', '/favicon.ico'])(
-      'should never sample %s',
-      (path) => {
-        expect(
-          sampler('1')({
-            name: `GET ${path}`,
-            normalizedRequest: { url: path },
-          }),
-        ).toBe(0);
-      },
-    );
+    it.each([
+      '/health/live',
+      '/health/ready',
+      '/metrics',
+      '/favicon.ico',
+      // real paths: every app sets globalPrefix 'api'
+      '/api/health/live',
+      '/api/health/ready',
+      '/api/metrics',
+    ])('should never sample %s', (path) => {
+      expect(
+        sampler('1')({
+          name: `GET ${path}`,
+          normalizedRequest: { url: path },
+        }),
+      ).toBe(0);
+    });
 
     it('should fall back to the span name when there is no request', () => {
       expect(sampler('1')({ name: 'GET /health/live' })).toBe(0);
@@ -135,6 +150,7 @@ describe('SentryUtil', () => {
 
     it('should not treat a path that merely starts with a silent prefix as silent', () => {
       expect(sampler('1')({ name: 'GET /healthcheck-report' })).toBe(1);
+      expect(sampler('1')({ name: 'GET /api/healthcheck-report' })).toBe(1);
     });
 
     it.each([

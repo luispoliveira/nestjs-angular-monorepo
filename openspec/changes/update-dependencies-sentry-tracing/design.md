@@ -82,6 +82,10 @@ After the bump, run `pnpm db:generate`, then `pnpm --filter @repo/database build
 
 - **Something imports before `./instrument`.** A later edit or an import-sorter rule could put another import above it and silently disable tracing. Mitigations: the comment on the import line, and a unit test per app asserting that `main.ts`'s first import is `./instrument`, i.e. a line check that is cheap and catches exactly this regression.
 - **`.env` and cwd.** It resolves `.env` against cwd, the same as `ConfigModule`, so behaviour matches. Running an app from the repo root would miss its `.env` in both places equally.
+- **Span streaming (v11 default).** Traces arrive as streamed segment spans, not `transaction` events. Scope tags do not reach spans, so `SentryUtil.init` also sets `app` as a global-scope *attribute*; the `initialScope` tags stay for error events. Found in the smoke test.
+- **Silent paths carry the global prefix.** The real probe paths are `/api/health/*` and `/api/metrics`, because every app sets `globalPrefix: 'api'`. The sampler matches `SILENT_PATHS` at any segment boundary instead of as a leading prefix. pino's exact-match `autoLogging.ignore` has the same latent bug, which predates this change and is left untouched.
+- **better-auth routes are named by method only** (`POST`). They are served by better-auth's handler rather than a Nest route, so Sentry has no route template for them; Nest controller routes get one (`GET /api/v1`). The DB spans inside them are still recorded.
+- **Startup work is traced too.** With a rate above 0, boot operations (`Create Nest App`, Prisma, Redis and Mongo connects) are sent as their own segments. This is accepted as low-volume noise.
 - **No cross-service traces.** A request that fans out over Redis microservices shows as separate, unlinked transactions per service. This is accepted as a non-goal.
 - **Vitest `clearMocks: true`** may break a web spec that depends on call history across tests. Fix that spec.
 - **Sentry v11 span-attribute renames** (`http.*`, `net.*`) affect only saved Sentry queries or dashboards, not code. Nothing in this repo references them.

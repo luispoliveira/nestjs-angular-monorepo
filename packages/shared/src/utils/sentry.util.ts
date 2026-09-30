@@ -22,8 +22,10 @@ function requestPath(context: Parameters<TracesSampler>[0]): string {
   }
 }
 
+// Matches at any segment boundary, so the apps' global prefix ('/api/health/live')
+// needs no special-casing while '/healthcheck' stays traced.
 function isSilentPath(path: string): boolean {
-  return SILENT_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+  return SILENT_PATHS.some((p) => `${path}/`.includes(`${p}/`));
 }
 
 // Runs before ConfigModule has loaded .env. Same precedence as ConfigModule:
@@ -54,6 +56,8 @@ export class SentryUtil {
         tags: { app: appName },
       },
     });
+    // v11 streams spans, which carry attributes only — tags stay on errors.
+    Sentry.getGlobalScope().setAttributes({ app: appName });
   }
 
   static captureException(

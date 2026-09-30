@@ -27,6 +27,10 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 Each app has a spec asserting that `./instrument` stays the first import.
 
+Two more things surfaced while smoke-testing against a fake ingest endpoint:
+- **Tags no longer reach spans.** Sentry v11 streams spans by default (envelope items of type `span`, not `transaction`), and streamed spans carry only attributes. `initialScope.tags` still tag error events, but the `app` label on traces needs `Sentry.getGlobalScope().setAttributes({ app })`.
+- **Probe paths include the prefix.** Every app sets `globalPrefix: 'api'`, so the real paths are `/api/health/*` and `/api/metrics`. The Sentry sampler matches `SILENT_PATHS` at segment boundaries. pino's `autoLogging.ignore` compares exactly and therefore never matches: probes are still logged.
+
 ---
 
 ## Microservices (Redis transport)

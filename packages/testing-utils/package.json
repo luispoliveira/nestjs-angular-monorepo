@@ -8,6 +8,8 @@
     "dev": "tsc --watch"
   },
   "exports": {
+    "./e2e/global-setup": "./dist/src/e2e/global-setup.js",
+    "./e2e/global-teardown": "./dist/src/e2e/global-teardown.js",
     ".": {
       "types": "./dist/src/index.d.ts",
       "require": "./dist/src/index.js",

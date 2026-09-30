@@ -242,13 +242,9 @@ Apps (`apps/auth`, `apps/api`, `apps/cron`, `apps/notifications`, `apps/worker`)
 
 ### Test Database Setup
 
-Integration and E2E tests run against a dedicated `nestjs_test` PostgreSQL database. Run once before the first test suite (or whenever migrations change):
+Integration and E2E tests provision their own disposable PostgreSQL, MongoDB and Redis containers (Testcontainers, via `@repo/testing-utils`' `globalSetup`) and apply the committed Prisma migrations to them on every run. Nothing needs to be set up or running beforehand, and a local database is never touched.
 
-```bash
-pnpm test:db:setup   # creates nestjs_test DB + runs prisma migrate deploy
-```
-
-Prerequisites: Docker stack must be running (`pnpm docker:up`).
+Prerequisite: Docker must be running.
 
 ### Running Tests
 

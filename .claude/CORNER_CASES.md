@@ -172,6 +172,14 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 
 **Fix:** converted `apps/auth/test/jest-integration.json` to the same real-ESM Jest setup already used by `jest-e2e.json` (`extensionsToTreatAsEsm: [".ts"]`, `ts-jest` with `useESM: true` and an inline ESNext/bundler tsconfig), and prefixed the `test:integration` script with `NODE_OPTIONS='--experimental-vm-modules'` — under Node ≥24.9 (this repo runs 24.19), Jest's native ESM execution mode can `require(esm)` a CJS module that itself requires a pure-ESM package; plain CJS Jest mode cannot. Doing this surfaced a second, previously-hidden issue in the same file: under real ESM, Jest's globals (`jest.fn()`, etc.) aren't auto-injected — `test/users.integration.ts` needed an explicit `import { jest } from '@jest/globals';`. If another package ever needs a pure-ESM-only dependency under a Jest suite that still runs in CJS mode, converting that suite's config to this same ESM pattern is the fix, not a `transformIgnorePatterns` change.
 
+### `jest.setup.ts` `override: true` silently re-points `globalSetup`'s container URLs at localhost
+
+**Symptom:** with Testcontainers wired in via `globalSetup`, the suites still connect to (and `DELETE FROM "user"` in) a Postgres on `localhost:5432`.
+
+**Cause:** Jest runs `globalSetup` first, then each worker runs `setupFiles`. `dotenv.config({ path: '.env.test', override: true })` overwrites `process.env.DATABASE_URL` with whatever `.env.test` holds, and localhost `??` fallbacks fill any gap.
+
+**Fix:** `apps/auth/.env.test` carries no `DATABASE_URL` / `MONGO_URI` / `REDIS_HOST` / `REDIS_PORT`, `jest.setup.ts` has no localhost fallbacks, and it throws when `E2E_CONTAINERS_RUN_ID_ENV` (set by `globalSetup`) is missing — so running Jest with a config that lacks `globalSetup` fails loudly instead of hitting a local database. New apps' suites should follow the same pattern.
+
 ### `apps/web`'s Angular CLI refuses to run under the shell's default active Node version
 
 **Symptom:** `pnpm --filter web test` (or `build`/`lint`) fails immediately with `The Angular CLI requires a minimum Node.js version of v22.22.3 or v24.15.0 or v26.0.0` even though a correct Node version is installed on the machine — the shell's currently-active `node -v` just isn't one of them (e.g. `v24.14.1`, one patch below the `v24.15.0` floor).

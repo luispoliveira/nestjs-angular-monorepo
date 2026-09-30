@@ -23,5 +23,7 @@
   },
   "testEnvironment": "node",
   "testTimeout": 30000,
+  "globalSetup": "@repo/testing-utils/e2e/global-setup",
+  "globalTeardown": "@repo/testing-utils/e2e/global-teardown",
   "setupFiles": ["<rootDir>/test/jest.setup.ts"]
 }

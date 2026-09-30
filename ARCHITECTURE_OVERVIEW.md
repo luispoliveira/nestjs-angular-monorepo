@@ -298,4 +298,4 @@ db:generate ──► build ──► dev / test / test:cov / lint / check-types
 
 `build` depends on `db:generate` and `^build`, caches `dist/**` (includes `apps/web`'s Angular build output), and takes `.env*` as additional cache-busting inputs.
 
-`test` and `test:cov` run across all workspaces (apps + `packages/shared`, `packages/mail`, `packages/database`). `test:integration` and `test:e2e` depend on `^build`, are never cached, and apply only to apps that have the corresponding jest configs. Run `pnpm test:db:setup` once before executing integration or E2E tasks to ensure the `nestjs_test` database exists and is migrated.
+`test` and `test:cov` run across all workspaces (apps + `packages/shared`, `packages/mail`, `packages/database`). `test:integration` and `test:e2e` depend on `^build`, are never cached, and apply only to apps that have the corresponding jest configs. `apps/auth`'s integration and E2E suites start their own Postgres, MongoDB and Redis containers per run (Docker required), so no database needs to be provisioned beforehand.

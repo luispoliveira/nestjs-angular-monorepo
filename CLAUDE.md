@@ -306,6 +306,12 @@ Follow **Gitflow** for branching and **Conventional Commits** for messages. Full
 
 ---
 
+## OpenSpec Explore
+
+When running OpenSpec explore mode (`/opsx:explore`, `openspec-explore` skill), ask every clarifying question through the **`AskUserQuestion`** tool — never as plain text in the reply. Group related questions (max 4 per call), offer 2–4 concrete options each, and put the recommended option first with `(Recommended)`. Open-ended discussion and findings stay in normal text; only the questions go through the tool.
+
+---
+
 ## Corner Cases Memory
 
 **Read [.claude/CORNER_CASES.md](.claude/CORNER_CASES.md) at the start of every task.**

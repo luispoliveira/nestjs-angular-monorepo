@@ -20,11 +20,11 @@
 
 ## 3. Probe silencing in all request logs
 
-- [ ] 3.1 refactor(shared): packages/shared: move `isSilentPath` from `utils/sentry.util.ts` to `constants/observability.ts`, strip the query string inside it, and import it back in `sentry.util.ts` — verify existing `sentry.util.spec.ts` still passes unchanged
-- [ ] 3.2 fix(shared): packages/shared: use `isSilentPath(req.url ?? '')` in `logging/pino.config.ts` `autoLogging.ignore`, and in `interceptors/logging.interceptor.ts` return `next.handle()` without creating a Mongo log when `isSilentPath(request.url)` — verify `pnpm --filter @repo/shared check-types`
-- [ ] 3.3 test(shared): packages/shared: add unit tests for `isSilentPath` (`/api/health/live`, `/health`, `/api/metrics?x=1` silent; `/api/healthcheck`, `/api/users/metrics-report`, `/api/users` not), for the pino `ignore` function, and for `LoggingInterceptor` not calling `mongoService.createLog` on `/api/health/ready` but calling it on `/api/users` — verify `pnpm --filter @repo/shared test` passes
-- [ ] 3.4 docs: correct `CONVENTIONS.md` (~line 141), `.github/instructions/nestjs-conventions.instructions.md` (~line 277) and `CLAUDE.md` Logging section so they describe segment matching under any prefix — verify wording matches spec `structured-production-logging`
-- [ ] 3.5 Commit group 3 with `/commit`
+- [x] 3.1 refactor(shared): packages/shared: move `isSilentPath` from `utils/sentry.util.ts` to `constants/observability.ts`, strip the query string inside it, and import it back in `sentry.util.ts` — verify existing `sentry.util.spec.ts` still passes unchanged
+- [x] 3.2 fix(shared): packages/shared: use `isSilentPath(req.url ?? '')` in `logging/pino.config.ts` `autoLogging.ignore`, and in `interceptors/logging.interceptor.ts` return `next.handle()` without creating a Mongo log when `isSilentPath(request.url)` — verify `pnpm --filter @repo/shared check-types`
+- [x] 3.3 test(shared): packages/shared: add unit tests for `isSilentPath` (`/api/health/live`, `/health`, `/api/metrics?x=1` silent; `/api/healthcheck`, `/api/users/metrics-report`, `/api/users` not), for the pino `ignore` function, and for `LoggingInterceptor` not calling `mongoService.createLog` on `/api/health/ready` but calling it on `/api/users` — verify `pnpm --filter @repo/shared test` passes
+- [x] 3.4 docs: correct `CONVENTIONS.md` (~line 141), `.github/instructions/nestjs-conventions.instructions.md` (~line 277) and `CLAUDE.md` Logging section so they describe segment matching under any prefix — verify wording matches spec `structured-production-logging`
+- [x] 3.5 Commit group 3 with `/commit`
 
 ## 4. update-packages covers every workspace
 

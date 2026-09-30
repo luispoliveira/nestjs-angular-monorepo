@@ -1,7 +1,7 @@
 import { EnvironmentEnum } from '@repo/shared-types';
 import { IncomingMessage } from 'http';
 import { Params } from 'nestjs-pino';
-import { SILENT_PATHS } from '../constants/observability';
+import { isSilentPath } from '../constants/observability';
 
 const isProduction = process.env.NODE_ENV === EnvironmentEnum.PRODUCTION;
 
@@ -86,7 +86,7 @@ export const pinoConfig: Params = {
     },
 
     autoLogging: {
-      ignore: (req: IncomingMessage) => SILENT_PATHS.includes(req.url ?? ''),
+      ignore: (req: IncomingMessage) => isSilentPath(req.url ?? ''),
     },
 
     redact: {

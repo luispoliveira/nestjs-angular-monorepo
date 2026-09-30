@@ -276,7 +276,7 @@ export class MyService {
 
 Correlation IDs are automatically propagated by `ClsModule` — no manual threading needed.
 
-HTTP request/response logs are written to MongoDB automatically by `LoggingInterceptor`. The following paths are silenced: `/health`, `/metrics`, `/favicon.ico`.
+HTTP request/response logs are written to MongoDB automatically by `LoggingInterceptor`. Probes are silenced (Mongo log, pino auto-logging and Sentry tracing) by `isSilentPath` from `constants/observability.ts`: any path containing a `/health`, `/metrics` or `/favicon.ico` segment, regardless of global prefix or query string.
 
 ## Error Handling
 

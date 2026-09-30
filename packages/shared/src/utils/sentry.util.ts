@@ -3,7 +3,7 @@
 import * as Sentry from '@sentry/nestjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
-import { SILENT_PATHS } from '../constants/observability';
+import { isSilentPath } from '../constants/observability';
 
 type TracesSampler = NonNullable<Sentry.NodeOptions['tracesSampler']>;
 
@@ -20,12 +20,6 @@ function requestPath(context: Parameters<TracesSampler>[0]): string {
   } catch {
     return '';
   }
-}
-
-// Matches at any segment boundary, so the apps' global prefix ('/api/health/live')
-// needs no special-casing while '/healthcheck' stays traced.
-function isSilentPath(path: string): boolean {
-  return SILENT_PATHS.some((p) => `${path}/`.includes(`${p}/`));
 }
 
 // Runs before ConfigModule has loaded .env. Same precedence as ConfigModule:

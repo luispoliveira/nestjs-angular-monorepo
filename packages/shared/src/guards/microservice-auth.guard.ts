@@ -4,13 +4,14 @@ import {
   Inject,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request } from 'express';
-import { catchError, map, Observable, throwError } from 'rxjs';
-import { MESSAGE_PATTERNS, SERVICES } from '../constants';
+import { catchError, map, Observable, throwError, timeout } from 'rxjs';
+import { AUTH_RPC_TIMEOUT_MS, MESSAGE_PATTERNS, SERVICES } from '../constants';
 import { IS_PUBLIC_KEY } from '../decorators';
 import { ContextUtil } from '../utils';
 
@@ -45,14 +46,24 @@ export class MicroserviceAuthGuard implements CanActivate {
         token,
       })
       .pipe(
+        timeout(AUTH_RPC_TIMEOUT_MS),
         map((user) => {
           (request as unknown as Record<string, unknown>).user = user;
           return true;
         }),
-        catchError((err) => {
-          this.logger.error('Authentication failed', err);
+        catchError((err: unknown) => {
+          // apps/auth rejects every bad token with RpcException({ status: 401 });
+          // anything else (timeout, Redis down) means auth is unavailable, not
+          // that the session is invalid — 503 keeps clients from signing out.
+          if ((err as { status?: number } | null)?.status === 401) {
+            return throwError(
+              () => new UnauthorizedException('Invalid or expired session'),
+            );
+          }
+          this.logger.error('Authentication service unavailable', err);
           return throwError(
-            () => new UnauthorizedException('Invalid or expired session'),
+            () =>
+              new ServiceUnavailableException('Authentication service unavailable'),
           );
         }),
       );

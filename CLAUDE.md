@@ -182,7 +182,7 @@ Prefer the pre-built `NotificationsPublisher` from `@repo/shared/publishers` ins
 - All routes are protected by default — `APP_GUARD: AuthGuard` is set globally in the auth app.
 - Use `@Public()` (from `@repo/shared/decorators`) to bypass.
 - Use `@CurrentUser()` to extract `request.user`.
-- For routes in microservice context, `MicroserviceAuthGuard` from `@repo/shared/guards` calls `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` to validate the bearer token (header or `better-auth.session_token` cookie).
+- For routes in microservice context, `MicroserviceAuthGuard` from `@repo/shared/guards` calls `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` to validate the bearer token (header or `better-auth.session_token` cookie). The call is bounded by `AUTH_RPC_TIMEOUT_MS` (5 s): auth rejecting the token → 401, auth silent/unreachable → 503 (never 401, so clients don't sign users out during an outage).
 - **Never** add Passport strategies or custom JWT logic.
 
 ### Logging & errors

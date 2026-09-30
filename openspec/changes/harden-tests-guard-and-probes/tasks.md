@@ -9,14 +9,14 @@
 - [x] 1.5 test(auth): verify isolation manually: with `pnpm docker:up`, insert a sentinel row into the local `nestjs` / `nestjs_test` `user` table, run both suites, confirm the row is still there
 - [x] 1.6 chore: root: delete `scripts/test-db-setup.mjs` and the `test:db:setup` script from `package.json` — verify `git grep -n "test:db:setup\|test-db-setup"` returns only archived openspec files
 - [x] 1.7 docs: update `CONVENTIONS.md`, `ARCHITECTURE_OVERVIEW.md` and `README.md` to say auth integration/E2E suites need Docker and provision containers per run; add a `.claude/CORNER_CASES.md` Testing entry on `setupFiles` `override: true` clobbering `globalSetup` env — verify no doc still mentions `nestjs_test` as a prerequisite
-- [ ] 1.8 Commit group 1 with `/commit`
+- [x] 1.8 Commit group 1 with `/commit`
 
 ## 2. MicroserviceAuthGuard fails fast
 
-- [ ] 2.1 feat(shared): packages/shared: add `AUTH_RPC_TIMEOUT_MS = 5000` to `src/constants/` and export it; in `guards/microservice-auth.guard.ts` pipe `timeout(AUTH_RPC_TIMEOUT_MS)` and map `err?.status === 401` → `UnauthorizedException`, anything else → `ServiceUnavailableException` (design D5) — verify `pnpm --filter @repo/shared check-types`
-- [ ] 2.2 test(shared): packages/shared: extend `guards/microservice-auth.guard.spec.ts` — auth replies `{ status: 401 }` → 401; `send()` never emits (jest fake timers past the bound) → 503; connection `Error` → 503; public route and missing-token cases still send nothing — verify `pnpm --filter @repo/shared test` passes
-- [ ] 2.3 docs: update `.github/instructions/nestjs-conventions.instructions.md` and `CLAUDE.md` Authentication sections with the 5 s bound and the 401-vs-503 contract — verify both files mention `AUTH_RPC_TIMEOUT_MS`
-- [ ] 2.4 Commit group 2 with `/commit`
+- [x] 2.1 feat(shared): packages/shared: add `AUTH_RPC_TIMEOUT_MS = 5000` to `src/constants/` and export it; in `guards/microservice-auth.guard.ts` pipe `timeout(AUTH_RPC_TIMEOUT_MS)` and map `err?.status === 401` → `UnauthorizedException`, anything else → `ServiceUnavailableException` (design D5) — verify `pnpm --filter @repo/shared check-types`
+- [x] 2.2 test(shared): packages/shared: extend `guards/microservice-auth.guard.spec.ts` — auth replies `{ status: 401 }` → 401; `send()` never emits (jest fake timers past the bound) → 503; connection `Error` → 503; public route and missing-token cases still send nothing — verify `pnpm --filter @repo/shared test` passes
+- [x] 2.3 docs: update `.github/instructions/nestjs-conventions.instructions.md` and `CLAUDE.md` Authentication sections with the 5 s bound and the 401-vs-503 contract — verify both files mention `AUTH_RPC_TIMEOUT_MS`
+- [x] 2.4 Commit group 2 with `/commit`
 
 ## 3. Probe silencing in all request logs
 

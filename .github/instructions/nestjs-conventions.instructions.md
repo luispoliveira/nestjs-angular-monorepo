@@ -242,6 +242,8 @@ export class ProfileController {
 3. Sends token to `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` on the auth microservice
 4. Attaches the session result to `request.user`
 
+The wait is bounded by `AUTH_RPC_TIMEOUT_MS` (5 s, `@repo/shared/constants`). A `{ status: 401 }` reply from auth (or a missing token) → `401`; no reply in time or any other transport error → `503 Service Unavailable`, so clients can tell "sign in again" from "try again later".
+
 ## Configuration
 
 Always use `ConfigService` — never access `process.env` directly in application code (exception: `main.ts` bootstrap only).

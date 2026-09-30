@@ -8,6 +8,8 @@
     "dev": "tsc --watch"
   },
   "exports": {
+    "./e2e/global-setup": "./dist/src/e2e/global-setup.js",
+    "./e2e/global-teardown": "./dist/src/e2e/global-teardown.js",
     ".": {
       "types": "./dist/src/index.d.ts",
       "require": "./dist/src/index.js",
@@ -20,9 +22,9 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.6.0",
-    "@testcontainers/postgresql": "^12.1.0",
-    "@types/node": "^26.4.0",
-    "testcontainers": "^12.1.0",
+    "@testcontainers/postgresql": "^12.2.0",
+    "@types/node": "^26.6.3",
+    "testcontainers": "^12.2.0",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {

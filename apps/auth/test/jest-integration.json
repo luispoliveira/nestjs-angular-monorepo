@@ -24,6 +24,8 @@
   "collectCoverageFrom": ["src/**/*.ts", "!**/*.module.ts", "!**/main.ts"],
   "coverageDirectory": "coverage",
   "testEnvironment": "node",
+  "globalSetup": "@repo/testing-utils/e2e/global-setup",
+  "globalTeardown": "@repo/testing-utils/e2e/global-teardown",
   "setupFiles": ["<rootDir>/test/jest.setup.ts"],
   "transformIgnorePatterns": [
     "node_modules/(?!(@thallesp/nestjs-better-auth|better-auth)/)"

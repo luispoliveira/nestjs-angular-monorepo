@@ -1,6 +1,4 @@
-import { ApplicationConfig } from '@nestjs/core';
 import { INestApplication, VersioningType } from '@nestjs/common';
-import { mapToExcludeRoute } from '@nestjs/core/middleware/utils.js';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from '@repo/database';
 import { TEST_PASSWORD, truncateDatabase } from '@repo/testing-utils';
@@ -17,18 +15,8 @@ describe('auth app (E2E)', () => {
     }).compile();
 
     app = module.createNestApplication({ bodyParser: false });
-    app.setGlobalPrefix('api/auth');
-    // Mirror production: exclude health from the global prefix so it's at /health/live
-    // (better-auth intercepts all /api/auth/* so health must be outside that prefix)
-    const appConfig = app.get(ApplicationConfig);
-    const current = appConfig.getGlobalPrefixOptions();
-    appConfig.setGlobalPrefixOptions({
-      ...current,
-      exclude: [
-        ...(current.exclude ?? []),
-        ...mapToExcludeRoute(['health', 'health/*path']),
-      ],
-    });
+    // Same prefix as src/main.ts (BootstrapUtil sets no exclusions for auth)
+    app.setGlobalPrefix('api');
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     await app.init();
 
@@ -40,9 +28,9 @@ describe('auth app (E2E)', () => {
     await app.close();
   });
 
-  describe('GET /health/live', () => {
+  describe('GET /api/health/live', () => {
     it('returns 200', async () => {
-      await supertest(app.getHttpServer()).get('/health/live').expect(200);
+      await supertest(app.getHttpServer()).get('/api/health/live').expect(200);
     });
   });
 

@@ -28,7 +28,7 @@ export class DatabaseService
       adapter: adapter,
       log:
         environment === EnvironmentEnum.DEVELOPMENT
-          ? ['query', 'info', 'warn', 'error']
+          ? ['info', 'warn', 'error']
           : ['warn', 'error'],
     });
   }

@@ -147,6 +147,8 @@ pnpm docker:down     # Stop infrastructure containers
 
 Unit tests use **Jest + ts-jest** and run entirely on the host (no Docker required). Each NestJS app has its own test configuration in its `package.json`.
 
+`apps/auth`'s `test:integration` and `test:e2e` suites are the exception: they start disposable Postgres, MongoDB and Redis containers per run, so Docker must be running. They never touch a local database.
+
 ### Run all tests (all apps, via Turborepo)
 
 ```bash

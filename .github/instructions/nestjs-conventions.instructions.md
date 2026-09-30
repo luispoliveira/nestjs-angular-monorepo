@@ -31,9 +31,20 @@ export class AppModule {}
 
 ## App Bootstrap (`main.ts`)
 
+Sentry must initialise before any other module loads, or its automatic tracing misses them. Each app has a `src/instrument.ts` that is the **first** import of `main.ts`:
+
+```typescript
+// src/instrument.ts
+import { SentryUtil } from '@repo/shared/sentry'; // subpath, not the barrel
+SentryUtil.init('my-service');
+```
+
+`SentryUtil.init` reads the app's `.env` itself (process env wins), since `ConfigModule` has not run yet. Tracing is opt-in via `SENTRY_TRACES_SAMPLE_RATE` (default `0`); `/health`, `/metrics` and `/favicon.ico` are never sampled.
+
 Use `BootstrapUtil.setup(app, config)` from `@repo/shared` to configure the HTTP server. For microservice apps, attach the Redis transport **before** calling `app.listen()`:
 
 ```typescript
+import './instrument'; // must stay first
 import { BootstrapUtil, MicroserviceUtil } from '@repo/shared';
 
 async function bootstrap() {
@@ -231,6 +242,8 @@ export class ProfileController {
 3. Sends token to `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` on the auth microservice
 4. Attaches the session result to `request.user`
 
+The wait is bounded by `AUTH_RPC_TIMEOUT_MS` (5 s, `@repo/shared/constants`). A `{ status: 401 }` reply from auth (or a missing token) → `401`; no reply in time or any other transport error → `503 Service Unavailable`, so clients can tell "sign in again" from "try again later".
+
 ## Configuration
 
 Always use `ConfigService` — never access `process.env` directly in application code (exception: `main.ts` bootstrap only).
@@ -263,7 +276,7 @@ export class MyService {
 
 Correlation IDs are automatically propagated by `ClsModule` — no manual threading needed.
 
-HTTP request/response logs are written to MongoDB automatically by `LoggingInterceptor`. The following paths are silenced: `/health`, `/metrics`, `/favicon.ico`.
+HTTP request/response logs are written to MongoDB automatically by `LoggingInterceptor`. Probes are silenced (Mongo log, pino auto-logging and Sentry tracing) by `isSilentPath` from `constants/observability.ts`: any path containing a `/health`, `/metrics` or `/favicon.ico` segment, regardless of global prefix or query string.
 
 ## Error Handling
 

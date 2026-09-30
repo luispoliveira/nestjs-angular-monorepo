@@ -10,6 +10,7 @@ import { ClsService } from 'nestjs-cls';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { CLS_CORRELATION_ID } from '../constants';
+import { isSilentPath } from '../constants/observability';
 import { MongoService } from '../mongo/mongo.service';
 import { Log } from '../mongo/schema/log.schema';
 import { SanitizeUtil } from '../utils';
@@ -28,6 +29,7 @@ export class LoggingInterceptor implements NestInterceptor {
   ): Promise<Observable<unknown>> {
     const now = Date.now();
     const request = context.switchToHttp().getRequest<Request>();
+    if (isSilentPath(request.url ?? '')) return next.handle();
     const { method, url, body, headers, ip } = request as {
       method: string;
       url: string;

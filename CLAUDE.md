@@ -112,9 +112,13 @@ Every app `AppModule` **must** import `SharedModule.register()` first. It is `@G
 
 ### `main.ts`
 
+The **first** import of every backend `main.ts` is `./instrument` — `src/instrument.ts` calls `SentryUtil.init('<app>')` from the lightweight `@repo/shared/sentry` subpath (never the `@repo/shared` barrel). Sentry hooks modules as they load, so anything imported before it is not traced.
+
 Use `BootstrapUtil.setup(app, config)`. For microservice apps, attach Redis transport **before** `listen()`:
 
 ```typescript
+import './instrument'; // must stay first
+// ...other imports
 const app = await NestFactory.create(AppModule, { bodyParser: false });
 app.connectMicroservice(MicroserviceUtil.getRedisOptions());
 await BootstrapUtil.setup(app, {
@@ -178,13 +182,13 @@ Prefer the pre-built `NotificationsPublisher` from `@repo/shared/publishers` ins
 - All routes are protected by default — `APP_GUARD: AuthGuard` is set globally in the auth app.
 - Use `@Public()` (from `@repo/shared/decorators`) to bypass.
 - Use `@CurrentUser()` to extract `request.user`.
-- For routes in microservice context, `MicroserviceAuthGuard` from `@repo/shared/guards` calls `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` to validate the bearer token (header or `better-auth.session_token` cookie).
+- For routes in microservice context, `MicroserviceAuthGuard` from `@repo/shared/guards` calls `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` to validate the bearer token (header or `better-auth.session_token` cookie). The call is bounded by `AUTH_RPC_TIMEOUT_MS` (5 s): auth rejecting the token → 401, auth silent/unreachable → 503 (never 401, so clients don't sign users out during an outage).
 - **Never** add Passport strategies or custom JWT logic.
 
 ### Logging & errors
 
 - Use NestJS `Logger` (backed by pino). Correlation IDs are auto-threaded.
-- HTTP req/res logs are persisted to MongoDB by `LoggingInterceptor` (paths `/health`, `/metrics`, `/favicon.ico` are silenced).
+- HTTP req/res logs are persisted to MongoDB by `LoggingInterceptor` (probes are skipped: any path containing the segment `/health`, `/metrics` or `/favicon.ico`, under any global prefix and ignoring the query string — same `isSilentPath` rule as pino auto-logging and Sentry sampling).
 - `AllExceptionFilter` returns `{ statusCode, timestamp, path, message, correlationId }`. Throw standard `NestJS` HTTP exceptions (`NotFoundException`, `BadRequestException`, …). `ZodValidationException` → 422.
 
 ---
@@ -303,6 +307,12 @@ Follow **Gitflow** for branching and **Conventional Commits** for messages. Full
 - Breaking changes: append `!` and add a `BREAKING CHANGE:` footer.
 - Body explains **why**, not what. Wrap at 72 chars.
 - **Do not** include AI attribution lines (no "Generated with...", "Co-authored by Claude/Copilot"), "as requested by...", or first-person pronouns.
+
+---
+
+## OpenSpec Explore
+
+When running OpenSpec explore mode (`/opsx:explore`, `openspec-explore` skill), ask every clarifying question through the **`AskUserQuestion`** tool — never as plain text in the reply. Group related questions (max 4 per call), offer 2–4 concrete options each, and put the recommended option first with `(Recommended)`. Open-ended discussion and findings stay in normal text; only the questions go through the tool.
 
 ---
 

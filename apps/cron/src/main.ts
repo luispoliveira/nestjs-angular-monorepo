@@ -1,12 +1,13 @@
+// Must stay the first import: Sentry instruments modules as they load.
+import './instrument';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { BootstrapUtil, SentryUtil } from '@repo/shared';
+import { BootstrapUtil } from '@repo/shared';
 import { EnvironmentEnum } from '@repo/shared-types';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  SentryUtil.init('cron');
   const app = await NestFactory.create(AppModule);
   app.useLogger(app.get(Logger));
 

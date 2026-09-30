@@ -15,6 +15,22 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 <!-- Add NestJS gotchas here -->
 
+### Sentry tracing silently records nothing unless Sentry initialises before every other import
+
+**Symptom:** errors reach Sentry, but with `SENTRY_TRACES_SAMPLE_RATE` above 0 no HTTP/Postgres/Redis spans ever appear.
+
+**Cause:** Sentry (v11 is channel-based, earlier majors used OpenTelemetry) instruments a module *when it loads*. Calling `SentryUtil.init()` inside `bootstrap()` is too late: by then `main.ts`'s own imports (`@nestjs/*`, the `@repo/shared` barrel, `./app.module`) have already loaded the whole graph. `node --require ./instrument` is no longer an option either, because v11 dropped it.
+
+**Fix:** each app's `src/instrument.ts` is the first import of `main.ts` and loads `SentryUtil` from the `@repo/shared/sentry` subpath, which pulls in neither Nest nor the barrel. Two follow-on gotchas:
+- **`.env` is not loaded yet.** `ConfigModule` only loads `.env` when `AppModule` is evaluated, so `SentryUtil.init` reads `.env` itself with `util.parseEnv`; process env wins.
+- **Do not use `process.loadEnvFile` here.** It writes to the host process's env, which Jest's sandboxed `process.env` never sees, so it cannot be unit-tested.
+
+Each app has a spec asserting that `./instrument` stays the first import.
+
+Two more things surfaced while smoke-testing against a fake ingest endpoint:
+- **Tags no longer reach spans.** Sentry v11 streams spans by default (envelope items of type `span`, not `transaction`), and streamed spans carry only attributes. `initialScope.tags` still tag error events, but the `app` label on traces needs `Sentry.getGlobalScope().setAttributes({ app })`.
+- **Probe paths include the prefix.** Every app sets `globalPrefix: 'api'`, so the real paths are `/api/health/*` and `/api/metrics`. The Sentry sampler matches `SILENT_PATHS` at segment boundaries. pino's `autoLogging.ignore` compares exactly and therefore never matches: probes are still logged.
+
 ---
 
 ## Microservices (Redis transport)
@@ -128,19 +144,21 @@ Under that distribution model, an incremental migration added here would reach *
 
 **Symptom:** running the root `update-packages` script (a bare `npx npm-check-updates -u`, no config) can rewrite `prisma` to a version like `8.0.0-rc.13` — `npm`'s `latest` dist-tag for the `prisma` CLI package currently points at a release candidate even though `@prisma/client`'s `latest` is still on the stable `7.x` line. The same run also proposes `typescript@7.x`, `vitest@5.x`, and `@nestjs/*@12.x`, none of which this stack's other dependencies accept yet.
 
-**Fix:** `.ncurc.json` at the repo root carries a `reject` list (`typescript`, `prisma`, `@prisma/client`, `vitest`, `@nestjs/*`, `ioredis`) that `npm-check-updates` reads automatically — do not remove an entry without re-checking its condition below. Because this repo is a GitHub template repository (consumed by copy, not by git merge), this file travels into every project created from the template along with the script it guards.
+**Fix:** `.ncurc.json` at the repo root carries a `reject` list (`typescript`, `prisma`, `@prisma/client`, `@nestjs/*`, `ioredis`) that `npm-check-updates` reads automatically — do not remove an entry without re-checking its condition below. Because this repo is a GitHub template repository (consumed by copy, not by git merge), this file travels into every project created from the template along with the script it guards.
 
 Deferred, with the condition that would unblock each:
 
 | Package | Currently blocked at | Blocked by | Unblock when |
 | --- | --- | --- | --- |
 | `typescript` | `^6.0.3` | `@angular/compiler-cli`/`@angular/build` require `>=6.0 <6.1`; `typescript-eslint` requires `<6.1.0`; `ts-jest` requires `<7`; `@thallesp/nestjs-better-auth` requires `^5.9.2 \|\| ^6.0.0` | Angular and `typescript-eslint` both publish support for TypeScript 7 |
-| `prisma` / `@prisma/client` | `^7.10.0` | `npm`'s `latest` dist-tag for the `prisma` CLI serves an 8.0.0 release candidate; `@prisma/client` has no stable 8.x at all | `@prisma/client` publishes a stable 8.x release |
-| `vitest` | `^4.0.8` | `@angular/build@22.1.7` declares a peer of `vitest ^4.0.8` | `@angular/build` widens its peer range to accept Vitest 5 |
-| `@nestjs/*` (core, common, config, microservices, platform-express, schedule, bullmq, cli, schematics, testing) | `^11.x` | Four dependencies cap their peer range at NestJS 11: `nestjs-zod@5.5.0` (`@nestjs/common ^10\|\|^11`, `@nestjs/swagger ^7.4.2\|\|^8\|\|^11`), `@sentry/nestjs@10.74.0` (`@nestjs/core ^8..^11`), `@nestjs/throttler@6.5.0` (`@nestjs/core ^7..^11`), `@nest-lab/throttler-storage-redis@1.2.0` (`@nestjs/core ^7..^11`) | All four of the packages above publish a release supporting NestJS 12 — they track the same major, so they are likely to clear around the same time, turning this into one coordinated upgrade rather than four separate ones |
-| `ioredis` | `^5.11.1` | No formal peer conflict, but `bullmq` bundles its own `ioredis` and a major-version split between the two has not been investigated | A dedicated investigation confirms compatibility with `bullmq`'s bundled `ioredis` |
+| `prisma` / `@prisma/client` | `^7.10.0` | `npm`'s `latest` dist-tag for the `prisma` CLI serves an 8.0.0 release candidate (`8.0.0-rc.19` as of 2026-09-30); `@prisma/client` has no stable 8.x at all | `@prisma/client` publishes a stable 8.x release |
+| `@nestjs/*` (core, common, config, microservices, platform-express, schedule, bullmq, cli, schematics, testing) | `^11.x` | Two dependencies still cap their peer range at NestJS 11: `nestjs-zod@5.5.0` (`@nestjs/common ^10\|\|^11`, `@nestjs/swagger ^7.4.2\|\|^8\|\|^11`) and `@nest-lab/throttler-storage-redis@1.2.0` (`@nestjs/core ^7..^11`). `@sentry/nestjs@11` and `@nestjs/throttler@6.7` already accept NestJS 12 | Both packages above publish a release supporting NestJS 12 |
+| `ioredis` | `^5.11.1` | `ioredis@6.0.0` is published, but no formal peer conflict tells us anything: `bullmq@6` takes `ioredis` as a peer and compatibility with a 6.x client has not been investigated | A dedicated investigation confirms `bullmq@6` works with `ioredis@6` |
+| `pnpm` (`packageManager`) | `10.33.0` | Not a peer conflict — `ncu` proposes `12.x`, but a package-manager major touches CI, Dockerfiles and the lockfile format; `.ncurc.json` does not reject it, so revert `packageManager` by hand after `ncu -u` | A dedicated change migrates CI, Docker images and the lockfile to pnpm 12 (then add nothing to `reject`) |
 
-See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full analysis.
+See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full analysis. `vitest` was unblocked in `update-dependencies-sentry-tracing` once `@angular/build@22.2` accepted `^4 || ^5`.
+
+**Also:** the root `update-packages` script runs `npx npm-check-updates --workspaces --root -u`, so it rewrites the root manifest **and** every `apps/*` / `packages/*` manifest (all read the same `.ncurc.json`). A bare `ncu -u` only touches the root `package.json` — don't drop the flags.
 
 ---
 
@@ -153,6 +171,14 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 **Cause:** `@faker-js/faker` ships `"type": "module"` with no CommonJS build at all (checked directly against its `package.json`). `packages/testing-utils` compiles to CommonJS, so its compiled `user.factory.js` calls `require()` on a package that has no `require`-able entry point — Node throws `ERR_REQUIRE_ESM` regardless of any `transformIgnorePatterns` tweak, because the `.js` file has already been compiled to a static `require()` call; no Jest transform step can retroactively turn that into an `import()`. `apps/auth/test/jest-integration.json` ran plain CommonJS Jest, unlike `jest-e2e.json`, which was already ESM-mode and unaffected. Not caused by any dependency version bump — `@faker-js/faker` was already pinned at `^10.6.0` (pure ESM) before this repo's most recent dependency work; `test:integration` isn't wired into any CI workflow, so nothing had caught it.
 
 **Fix:** converted `apps/auth/test/jest-integration.json` to the same real-ESM Jest setup already used by `jest-e2e.json` (`extensionsToTreatAsEsm: [".ts"]`, `ts-jest` with `useESM: true` and an inline ESNext/bundler tsconfig), and prefixed the `test:integration` script with `NODE_OPTIONS='--experimental-vm-modules'` — under Node ≥24.9 (this repo runs 24.19), Jest's native ESM execution mode can `require(esm)` a CJS module that itself requires a pure-ESM package; plain CJS Jest mode cannot. Doing this surfaced a second, previously-hidden issue in the same file: under real ESM, Jest's globals (`jest.fn()`, etc.) aren't auto-injected — `test/users.integration.ts` needed an explicit `import { jest } from '@jest/globals';`. If another package ever needs a pure-ESM-only dependency under a Jest suite that still runs in CJS mode, converting that suite's config to this same ESM pattern is the fix, not a `transformIgnorePatterns` change.
+
+### `jest.setup.ts` `override: true` silently re-points `globalSetup`'s container URLs at localhost
+
+**Symptom:** with Testcontainers wired in via `globalSetup`, the suites still connect to (and `DELETE FROM "user"` in) a Postgres on `localhost:5432`.
+
+**Cause:** Jest runs `globalSetup` first, then each worker runs `setupFiles`. `dotenv.config({ path: '.env.test', override: true })` overwrites `process.env.DATABASE_URL` with whatever `.env.test` holds, and localhost `??` fallbacks fill any gap.
+
+**Fix:** `apps/auth/.env.test` carries no `DATABASE_URL` / `MONGO_URI` / `REDIS_HOST` / `REDIS_PORT`, `jest.setup.ts` has no localhost fallbacks, and it throws when `E2E_CONTAINERS_RUN_ID_ENV` (set by `globalSetup`) is missing — so running Jest with a config that lacks `globalSetup` fails loudly instead of hitting a local database. New apps' suites should follow the same pattern.
 
 ### `apps/web`'s Angular CLI refuses to run under the shell's default active Node version
 

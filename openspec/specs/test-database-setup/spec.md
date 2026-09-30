@@ -8,46 +8,6 @@ Defines how the monorepo provisions, configures, and selects the PostgreSQL test
 
 ## Requirements
 
-### Requirement: pnpm test:db:setup provisions the test database
-
-The root `package.json` SHALL expose a `test:db:setup` script that creates the `nestjs_test` PostgreSQL database (if it does not exist) and applies all Prisma migrations against it.
-
-#### Scenario: Script runs successfully against running Postgres
-
-- **WHEN** `pnpm test:db:setup` is executed with the local docker-compose Postgres running
-- **THEN** a database named `nestjs_test` exists on the Postgres instance
-- **THEN** all Prisma migrations have been applied to `nestjs_test`
-- **THEN** the script exits with code 0
-
-#### Scenario: Script is idempotent
-
-- **WHEN** `pnpm test:db:setup` is run a second time against an already-provisioned database
-- **THEN** it completes without error
-
----
-
-### Requirement: Each app has a .env.test file for test environment variables
-
-Each NestJS app (`auth`, `notifications`, `worker`) SHALL include a `.env.test` file (committed, containing no secrets) that sets `DATABASE_URL` to point at the `nestjs_test` database.
-
-#### Scenario: .env.test contains the test database URL
-
-- **WHEN** `apps/auth/.env.test` is read
-- **THEN** it contains a `DATABASE_URL` line pointing to the `nestjs_test` database
-
----
-
-### Requirement: Jest setupFiles override process.env before module init
-
-Each app's `test/jest.setup.ts` SHALL load `.env.test` values into `process.env` so that `ConfigModule.forRoot()` (which runs after `setupFiles`) reads the test database URL.
-
-#### Scenario: Integration tests connect to nestjs_test not nestjs
-
-- **WHEN** an integration test suite starts up a NestJS `TestingModule`
-- **THEN** `DatabaseService` connects to `nestjs_test`, not `nestjs`
-
----
-
 ### Requirement: Separate jest-integration.json and jest-e2e.json configs per app
 
 Each app SHALL have two Jest config files in its `test/` directory:
@@ -77,3 +37,50 @@ The monorepo root `package.json` SHALL include `test:integration` and `test:e2e`
 
 - **WHEN** `pnpm test:integration` is run from the repo root
 - **THEN** Turborepo executes the `test:integration` script in each app that defines it
+
+### Requirement: Integration and E2E runs provision their own ephemeral backing services
+
+Every `test:integration` and `test:e2e` run SHALL start its own disposable PostgreSQL, MongoDB and Redis instances, apply all committed Prisma migrations to the PostgreSQL instance, point the suites at them, and remove them when the run ends. No suite SHALL require a database, Mongo or Redis instance to be running beforehand.
+
+#### Scenario: Suites run with no local infrastructure
+
+- **WHEN** `pnpm test:integration` or `pnpm test:e2e` is run in `apps/auth` with Docker available and no local Postgres, MongoDB or Redis running
+- **THEN** the suites start, run against freshly migrated ephemeral instances, and pass
+
+#### Scenario: A developer database is never touched
+
+- **WHEN** a developer has their own Postgres on `localhost:5432` containing data (including a database named `nestjs_test`) and runs the suites
+- **THEN** that data is unchanged after the run
+
+#### Scenario: Instances are removed after the run
+
+- **WHEN** a test run finishes, whether its tests passed or failed
+- **THEN** no container started by that run is still present
+
+#### Scenario: Docker is unavailable
+
+- **WHEN** the suites are run and Docker is not reachable
+- **THEN** the run fails before any test executes, with an error naming the missing container runtime
+
+### Requirement: Test env files carry no connection targets
+
+Each NestJS app that has integration or E2E suites SHALL include a `.env.test` file (committed, containing no secrets) with the non-connection settings those suites need. It SHALL NOT set `DATABASE_URL`, `MONGO_URI`, `REDIS_HOST` or `REDIS_PORT`; those come from the ephemeral instances provisioned for the run.
+
+#### Scenario: .env.test has no connection variables
+
+- **WHEN** `apps/auth/.env.test` is read
+- **THEN** it contains no `DATABASE_URL`, `MONGO_URI`, `REDIS_HOST` or `REDIS_PORT` line
+
+### Requirement: Jest setupFiles preserve the provisioned connections
+
+Each app's `test/jest.setup.ts` SHALL load `.env.test` values into `process.env` before `ConfigModule.forRoot()` reads them, SHALL NOT replace or default the connection variables provisioned for the run, and SHALL abort the run when those were not provisioned.
+
+#### Scenario: Suites connect to the ephemeral database
+
+- **WHEN** an integration or E2E suite starts a NestJS `TestingModule`
+- **THEN** `DatabaseService` connects to the PostgreSQL instance provisioned for that run, not to any database named in an `.env` or `.env.test` file
+
+#### Scenario: Jest run without provisioning
+
+- **WHEN** a suite is started through a Jest config that does not provision the ephemeral instances
+- **THEN** the run aborts before any test executes, stating that the provisioning setup is required

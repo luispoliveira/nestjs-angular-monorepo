@@ -112,9 +112,13 @@ Every app `AppModule` **must** import `SharedModule.register()` first. It is `@G
 
 ### `main.ts`
 
+The **first** import of every backend `main.ts` is `./instrument` — `src/instrument.ts` calls `SentryUtil.init('<app>')` from the lightweight `@repo/shared/sentry` subpath (never the `@repo/shared` barrel). Sentry hooks modules as they load, so anything imported before it is not traced.
+
 Use `BootstrapUtil.setup(app, config)`. For microservice apps, attach Redis transport **before** `listen()`:
 
 ```typescript
+import './instrument'; // must stay first
+// ...other imports
 const app = await NestFactory.create(AppModule, { bodyParser: false });
 app.connectMicroservice(MicroserviceUtil.getRedisOptions());
 await BootstrapUtil.setup(app, {

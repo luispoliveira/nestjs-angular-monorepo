@@ -4,3 +4,4 @@ export * from './jobs';
 export * from './queues';
 export * from './services';
 export * from './throttler';
+export * from './observability';

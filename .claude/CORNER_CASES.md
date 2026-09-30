@@ -15,6 +15,18 @@ Accumulated corner cases, gotchas, and non-obvious behaviours discovered during 
 
 <!-- Add NestJS gotchas here -->
 
+### Sentry tracing silently records nothing unless Sentry initialises before every other import
+
+**Symptom:** errors reach Sentry, but with `SENTRY_TRACES_SAMPLE_RATE` above 0 no HTTP/Postgres/Redis spans ever appear.
+
+**Cause:** Sentry (v11 is channel-based, earlier majors used OpenTelemetry) instruments a module *when it loads*. Calling `SentryUtil.init()` inside `bootstrap()` is too late: by then `main.ts`'s own imports (`@nestjs/*`, the `@repo/shared` barrel, `./app.module`) have already loaded the whole graph. `node --require ./instrument` is no longer an option either, because v11 dropped it.
+
+**Fix:** each app's `src/instrument.ts` is the first import of `main.ts` and loads `SentryUtil` from the `@repo/shared/sentry` subpath, which pulls in neither Nest nor the barrel. Two follow-on gotchas:
+- **`.env` is not loaded yet.** `ConfigModule` only loads `.env` when `AppModule` is evaluated, so `SentryUtil.init` reads `.env` itself with `util.parseEnv`; process env wins.
+- **Do not use `process.loadEnvFile` here.** It writes to the host process's env, which Jest's sandboxed `process.env` never sees, so it cannot be unit-tested.
+
+Each app has a spec asserting that `./instrument` stays the first import.
+
 ---
 
 ## Microservices (Redis transport)

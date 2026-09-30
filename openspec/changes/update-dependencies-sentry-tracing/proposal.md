@@ -36,7 +36,7 @@ _None._
 | Risk | Mitigation |
 | --- | --- |
 | better-auth 1.7.6 runtime schema check rejects auth requests on a mismatch | Rebuild `packages/database` after `db:generate`, then start `apps/auth` and run its integration tests (the runtime check fails fast); migration only if a real gap is reported |
-| Moving Sentry init before `ConfigModule` loses `.env` values in dev (DSN silently absent) | Instrument entry loads `.env` itself with Node's built-in `process.loadEnvFile`, which never overrides already-set vars |
+| Moving Sentry init before `ConfigModule` loses `.env` values in dev (DSN silently absent) | Instrument entry loads `.env` itself with Node's built-in `util.parseEnv`, never overriding already-set vars |
 | `vitest` 5 enables `clearMocks` by default; a spec relying on mock history across tests breaks | Run `apps/web` tests; fix the specific spec rather than disabling the default |
 | Two resolved copies of a bumped package (seen with `bullmq`) break type-checks | `pnpm dedupe` after install, check lockfile for single resolution |
 | Tracing overhead in production | Default rate `0`; tracing only runs when an operator sets a rate |
@@ -45,7 +45,7 @@ _None._
 
 - **`node --require ./instrument.js`** in start scripts / PM2 / Docker — removed in Sentry v11 ("Remove support for initialising via `--require`"); and `--import` targets ESM, while the Nest apps compile to CommonJS. A top-level `import './instrument'` is Sentry's documented Nest path and needs no launcher changes.
 - **Keep init in `bootstrap()`** — error capture keeps working but tracing stays broken; rejected since tracing is the goal.
-- **`dotenv` in the instrument entry** — works, but `process.loadEnvFile` is built into Node ≥ 22 (the workspace floor) and avoids a new runtime dependency in five apps.
+- **`dotenv` in the instrument entry** — works, but `util.parseEnv` is built into Node ≥ 22 (the workspace floor) and avoids a new runtime dependency in five apps.
 
 ## Impact
 

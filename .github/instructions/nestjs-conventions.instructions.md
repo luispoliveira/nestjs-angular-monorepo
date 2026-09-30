@@ -31,9 +31,20 @@ export class AppModule {}
 
 ## App Bootstrap (`main.ts`)
 
+Sentry must initialise before any other module loads, or its automatic tracing misses them. Each app has a `src/instrument.ts` that is the **first** import of `main.ts`:
+
+```typescript
+// src/instrument.ts
+import { SentryUtil } from '@repo/shared/sentry'; // subpath, not the barrel
+SentryUtil.init('my-service');
+```
+
+`SentryUtil.init` reads the app's `.env` itself (process env wins), since `ConfigModule` has not run yet. Tracing is opt-in via `SENTRY_TRACES_SAMPLE_RATE` (default `0`); `/health`, `/metrics` and `/favicon.ico` are never sampled.
+
 Use `BootstrapUtil.setup(app, config)` from `@repo/shared` to configure the HTTP server. For microservice apps, attach the Redis transport **before** calling `app.listen()`:
 
 ```typescript
+import './instrument'; // must stay first
 import { BootstrapUtil, MicroserviceUtil } from '@repo/shared';
 
 async function bootstrap() {

@@ -41,10 +41,10 @@ The `SentryUtil.init('<app>')` call is removed from `bootstrap()`. This is the a
 
 Importing `SentryUtil` from `@repo/shared` would load the whole barrel, and with it all of Nest, before Sentry initialises, which defeats D1. Add an `exports` entry `"./sentry"` that points at the compiled `dist/utils/sentry.util.js` (types included). `sentry.util.ts` may import only `@sentry/nestjs`, `node:*` built-ins and plain constants files. It stays in the main barrel too, because `AllExceptionFilter` and `EmailConsumer` use `SentryUtil.captureException`.
 
-### D3: `SentryUtil.init` loads `.env` itself with `process.loadEnvFile`
+### D3: `SentryUtil.init` loads `.env` itself with Node's `util.parseEnv`
 *Package: `packages/shared`.*
 
-Before it reads `SENTRY_DSN`, `init` calls `process.loadEnvFile('.env')` when `existsSync('.env')` is true. This is Node's built-in loader (the floor is Node ≥ 22). It does not override variables already present in `process.env`, which matches `ConfigModule`'s precedence, and it is guarded because it throws when the file is missing (containers). When `ConfigModule` later loads the same file there is no conflict, since the values are identical. No new dependency. `main.ts` remains the only place outside `SentryUtil` that reads `process.env`, the same exemption the util already has.
+Before it reads `SENTRY_DSN`, `init` reads `.env` (when `existsSync('.env')`) with Node's built-in `util.parseEnv` and assigns only keys not already present in `process.env`, which matches `ConfigModule`'s precedence; a missing file (containers) is a no-op. `process.loadEnvFile` has the same semantics but writes to the host process's env, bypassing Jest's sandboxed `process.env`, so it cannot be unit-tested. When `ConfigModule` later loads the same file there is no conflict, since the values are identical. No new dependency. `main.ts` remains the only place outside `SentryUtil` that reads `process.env`, the same exemption the util already has.
 
 ### D4: Sampling via `tracesSampler`, dropping silent paths
 *Package: `packages/shared`.*
@@ -81,7 +81,7 @@ After the bump, run `pnpm db:generate`, then `pnpm --filter @repo/database build
 ## Risks / Trade-offs
 
 - **Something imports before `./instrument`.** A later edit or an import-sorter rule could put another import above it and silently disable tracing. Mitigations: the comment on the import line, and a unit test per app asserting that `main.ts`'s first import is `./instrument`, i.e. a line check that is cheap and catches exactly this regression.
-- **`process.loadEnvFile` and cwd.** It resolves `.env` against cwd, the same as `ConfigModule`, so behaviour matches. Running an app from the repo root would miss its `.env` in both places equally.
+- **`.env` and cwd.** It resolves `.env` against cwd, the same as `ConfigModule`, so behaviour matches. Running an app from the repo root would miss its `.env` in both places equally.
 - **No cross-service traces.** A request that fans out over Redis microservices shows as separate, unlinked transactions per service. This is accepted as a non-goal.
 - **Vitest `clearMocks: true`** may break a web spec that depends on call history across tests. Fix that spec.
 - **Sentry v11 span-attribute renames** (`http.*`, `net.*`) affect only saved Sentry queries or dashboards, not code. Nothing in this repo references them.

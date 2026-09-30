@@ -15,6 +15,12 @@
       "require": "./dist/index.js",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./sentry": {
+      "types": "./dist/utils/sentry.util.d.ts",
+      "require": "./dist/utils/sentry.util.js",
+      "import": "./dist/utils/sentry.util.js",
+      "default": "./dist/utils/sentry.util.js"
     }
   },
   "peerDependencies": {

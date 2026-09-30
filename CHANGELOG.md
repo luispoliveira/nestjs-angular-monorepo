@@ -1,3 +1,12 @@
+## v1.8.1 (2026-09-30)
+
+## What's Changed
+* Bump version to 1.8.0 by @luispoliveira in https://github.com/luispoliveira/nestjs-angular-monorepo/pull/30
+* Enhance OpenSpec workflows and enable Sentry tracing by @luispoliveira in https://github.com/luispoliveira/nestjs-angular-monorepo/pull/32
+
+
+**Full Changelog**: https://github.com/luispoliveira/nestjs-angular-monorepo/compare/v1.8.0...v1.8.1
+
 ## v1.8.0 (2026-09-14)
 
 ## What's Changed

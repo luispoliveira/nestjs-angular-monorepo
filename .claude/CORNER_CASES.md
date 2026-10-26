@@ -184,6 +184,14 @@ Under that distribution model, an incremental migration added here would reach *
 
 **Fix:** `DatabaseSeederService.onModuleInit` wraps the run in `withRetry` (3 attempts, `attempt × 500 ms` back-off, a warning per failed attempt, the last error rethrown). Because the whole sequence is retried, every step added to `seed()` **must be idempotent** (find-or-skip on a natural key).
 
+### `PushSubscription` adds a relation to better-auth's `User` model in `auth.prisma`
+
+`auth.prisma` is owned by better-auth, but Prisma needs the back-relation field on `User` (`pushSubscriptions PushSubscription[]`) for `PushSubscription.user` to compile. That one field is the only edit this template makes to `auth.prisma` (it carries a comment saying so). It is not a column — the table gets its FK from the `push_subscription` migration — so better-auth never sees it. If `auth.prisma` is ever regenerated from better-auth's CLI, **re-add that line** or `prisma generate` fails with "missing the opposite relation field". The FK is `ON DELETE CASCADE`, so deleting a user deletes their subscriptions. After touching `auth.prisma`, rebuild `packages/database` (see the `db:generate` entry above).
+
+### `prisma migrate dev` cannot run non-interactively — diff the schema instead
+
+Without a database to hand (CI, a sandbox), generate the SQL with `prisma migrate diff --from-schema <old schema dir> --to-schema ./prisma --script`, save the old `prisma/` files first, and write the output to `prisma/migrations/<timestamp>_<name>/migration.sql`. It is the same SQL `migrate dev` would write; confirm it by running `pnpm db:migrate` once against a real database.
+
 ---
 
 ## Angular

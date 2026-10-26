@@ -14,6 +14,7 @@ import { AppController } from './app.controller';
 import { AuditEventsController } from './audit/audit-events.controller';
 import { CustomersModule } from './customers/customers.module';
 import { apiEnvSchema } from './env';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { apiEnvSchema } from './env';
     ClientsModule.registerAsync([MicroserviceUtil.registerAuthService()]),
     DatabaseSeederModule,
     CustomersModule,
+    PushModule,
   ],
   controllers: [AppController, AuditEventsController],
   providers: [

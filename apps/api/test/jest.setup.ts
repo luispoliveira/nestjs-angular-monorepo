@@ -17,3 +17,6 @@ dotenv.config({
   path: path.resolve(process.cwd(), '.env.test'),
   override: true,
 });
+
+// Required by apiEnvSchema (web push); any non-empty value will do in tests.
+process.env.VAPID_PUBLIC_KEY ??= 'test-vapid-public-key';

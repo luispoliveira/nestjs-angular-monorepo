@@ -37,6 +37,16 @@ import { RedactingBullMQAdapter } from './redacting-bullmq.adapter';
         adapter: RedactingBullMQAdapter,
         options: { readOnlyMode: true },
       },
+      {
+        name: QUEUES.PUSH,
+        adapter: RedactingBullMQAdapter,
+        options: { readOnlyMode: true },
+      },
+      {
+        name: QUEUES.PUSH_DLQ,
+        adapter: RedactingBullMQAdapter,
+        options: { readOnlyMode: true },
+      },
     ),
   ],
 })

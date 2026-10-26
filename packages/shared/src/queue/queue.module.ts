@@ -1,7 +1,8 @@
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EmailProducer } from './producers';
+import { QUEUES } from '../constants';
+import { EmailProducer, PushProducer } from './producers';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -43,10 +44,16 @@ export class QueueModule {
       }),
     );
     const allQueues = [...mainQueues, ...dlqQueues];
+    // A producer injects its own queue, so it is only provided where that
+    // queue is registered.
+    const producers = [
+      ...(queues.includes(QUEUES.EMAIL) ? [EmailProducer] : []),
+      ...(queues.includes(QUEUES.PUSH) ? [PushProducer] : []),
+    ];
     return {
       imports: allQueues,
-      providers: [EmailProducer],
-      exports: [EmailProducer, ...allQueues],
+      providers: producers,
+      exports: [...producers, ...allQueues],
       module: QueueModule,
     };
   }

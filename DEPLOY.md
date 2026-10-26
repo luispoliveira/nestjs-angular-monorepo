@@ -146,6 +146,7 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `BETTER_AUTH_URL`    | `https://<dominio-auth>/api/auth`                                     | ✅          |                                                                                                                 |
 | `CORS_ORIGIN`        | `https://<dominio-frontend>`                                          | ✅          |                                                                                                                 |
 | `ENCRYPTION_KEY`     | `<mesmo valor que apps/auth>`                                         | ✅          | **Tem de ser igual em todos os serviços**                                                                       |
+| `VAPID_PUBLIC_KEY`   | `<chave pública do worker>`                                           | ✅          | Só a pública (entregue aos browsers para subscreverem). **Nunca** a privada                                     |
 
 ---
 
@@ -184,6 +185,9 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `FROM_EMAIL`     | `noreply@<dominio-frontend>`                                                   | ✅          | Endereço de email remetente                               |
 | `FROM_NAME`      | `<Nome da App>`                                                       | ✅          | Nome do remetente nos emails                              |
 | `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Em produção pode ficar em branco ou igual ao `FROM_EMAIL` |
+| `VAPID_SUBJECT`  | `mailto:<email da equipa>`                                            | ✅          | Contacto para o serviço de push (`mailto:` ou `https:`). Valor inválido impede o arranque |
+| `VAPID_PUBLIC_KEY`  | `<chave pública>`                                                  | ✅          | Par gerado com `npx web-push generate-vapid-keys`; **igual** ao da `api` |
+| `VAPID_PRIVATE_KEY` | `<chave privada>`                                                  | ✅          | Segredo: só o `worker` a tem. Trocá-la invalida todas as subscrições existentes |
 
 ---
 
@@ -390,6 +394,7 @@ Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `C
 - [ ] `METRICS_TOKEN` definido em todos os serviços NestJS (sem ele `/api/metrics` fica fechado em produção)
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth` com URL pública HTTPS do frontend
+- [ ] `VAPID_PUBLIC_KEY` igual em `api` e `worker`; `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT` só no `worker` (par gerado com `npx web-push generate-vapid-keys`)
 - [ ] `BREVO_API_KEY` (ou `RESEND_API_KEY` se `MAIL_PROVIDER=resend`) válida em `apps/worker`
 - [ ] Infraestrutura iniciada e healthchecks a passar
 - [ ] Migrações corridas (`pnpm db:migrate`)

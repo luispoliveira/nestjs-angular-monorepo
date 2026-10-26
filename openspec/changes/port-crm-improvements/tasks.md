@@ -49,17 +49,17 @@
 
 ## 5. Web push: backend
 
-- [ ] 5.1 feat: packages/database: add the `PushSubscription` model and the `User` back-relation, then generate the migration (D7). Verify `pnpm db:generate` and the migration apply on a clean database.
-- [ ] 5.2 test: packages/shared-types + packages/shared: `sendPushNotificationSchema` specs (relative `url` only, `//` rejected, at least one user id) and `PushProducer` specs (parses before enqueueing, uses `SEND_PUSH_NOTIFICATION`). Extend the `QueueModule`/constants specs for `PUSH`/`PUSH_DLQ`. Verify they fail.
-- [ ] 5.3 feat: packages/shared-types + packages/shared: add the schema, `QUEUES.PUSH`/`PUSH_DLQ`, `JOB_PATTERNS.SEND_PUSH_NOTIFICATION` and `PushProducer`. Verify the specs pass.
-- [ ] 5.4 test: apps/worker: port `push.consumer.spec.ts`: fan-out to every live subscription, soft-delete on 404/410, `AggregateError` on other failures, no-op without subscriptions, `ngswPayload` shape, routing to the DLQ after the last attempt. Verify it fails.
-- [ ] 5.5 feat: apps/worker: add `PushConsumer`, `PushDlqService`, the VAPID env vars and the `web-push` dependency, and register the push queues. Verify the spec passes and the worker boots.
-- [ ] 5.6 test: apps/worker: extend the `dlq.controller` spec (dispatch by `payload.queue`, unknown queue gives an error) and the Bull Board spec (push queues listed). Verify they fail.
-- [ ] 5.7 feat: apps/worker: route `DlqController` by queue and add the push queues to Bull Board. Verify the specs pass.
-- [ ] 5.8 test: apps/api: push e2e: public key (200 / 401), subscribe and reassign to the latest user, delete own vs another user's (204 and untouched), test push enqueues a job addressed only to the caller. Verify it fails.
-- [ ] 5.9 feat: apps/api: add the push module (controller, service, DTOs, `@RateLimit('default')`) and `VAPID_PUBLIC_KEY` in `env.ts`. Verify the e2e passes.
-- [ ] 5.10 docs: `.env.example`/DEPLOY.md (VAPID keys, `npx web-push generate-vapid-keys`). Port the push skill to `.claude/skills/push-notification/SKILL.md`, adapted to the template and including the content rule. Add a database corner case on the `auth.prisma` back-relation. Verify the files exist.
-- [ ] 5.11 chore: commit group 5 with `/commit`. Verify the gate passes.
+- [x] 5.1 feat: packages/database: add the `PushSubscription` model and the `User` back-relation, then generate the migration (D7). Verify `pnpm db:generate` and the migration apply on a clean database.
+- [x] 5.2 test: packages/shared + packages/shared-types: `sendPushNotificationSchema` specs (relative `url` only, `//` rejected, at least one user id) and `PushProducer` specs (parses before enqueueing, uses `SEND_PUSH_NOTIFICATION`). Extend the `QueueModule`/constants specs for `PUSH`/`PUSH_DLQ`. Verify they fail.
+- [x] 5.3 feat: packages/shared-types + packages/shared: add the schema, `QUEUES.PUSH`/`PUSH_DLQ`, `JOB_PATTERNS.SEND_PUSH_NOTIFICATION` and `PushProducer`. Verify the specs pass.
+- [x] 5.4 test: apps/worker: port `push.consumer.spec.ts`: fan-out to every live subscription, soft-delete on 404/410, `AggregateError` on other failures, no-op without subscriptions, `ngswPayload` shape, routing to the DLQ after the last attempt. Verify it fails.
+- [x] 5.5 feat: apps/worker: add `PushConsumer`, `PushDlqService`, the VAPID env vars and the `web-push` dependency, and register the push queues. Verify the spec passes and the worker boots.
+- [x] 5.6 test: apps/worker: extend the `dlq.controller` spec (dispatch by `payload.queue`, unknown queue gives an error) and the Bull Board spec (push queues listed). Verify they fail.
+- [x] 5.7 feat: apps/worker: route `DlqController` by queue and add the push queues to Bull Board. Verify the specs pass.
+- [x] 5.8 test: apps/api: push e2e: public key (200 / 401), subscribe and reassign to the latest user, delete own vs another user's (204 and untouched), test push enqueues a job addressed only to the caller. Verify it fails.
+- [x] 5.9 feat: apps/api: add the push module (controller, service, DTOs, `@RateLimit('default')`) and `VAPID_PUBLIC_KEY` in `env.ts`. Verify the e2e passes.
+- [x] 5.10 docs: `.env.example`/DEPLOY.md (VAPID keys, `npx web-push generate-vapid-keys`). Port the push skill to `.claude/skills/push-notification/SKILL.md`, adapted to the template and including the content rule. Add a database corner case on the `auth.prisma` back-relation. Verify the files exist.
+- [x] 5.11 chore: commit group 5 with `/commit`. Verify the gate passes.
 
 ## 6. Web push: web
 

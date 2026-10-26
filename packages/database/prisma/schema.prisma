@@ -34,3 +34,22 @@ model Customer {
   @@index([deletedAt, createdAt])
   @@map("customer")
 }
+
+// One row per browser that opted in to web push. `endpoint` identifies the
+// browser, so subscribing it again as another user reassigns the row.
+model PushSubscription {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String  @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+
+  @@index([userId])
+  @@map("push_subscription")
+}

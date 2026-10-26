@@ -6,6 +6,9 @@ const baseEnv = {
   MONGO_URI: 'mongodb://localhost:27017/db',
   CORS_ORIGIN: 'http://localhost:4200',
   FROM_EMAIL: 'no-reply@example.com',
+  VAPID_SUBJECT: 'mailto:ops@example.com',
+  VAPID_PUBLIC_KEY: 'BPublicKey',
+  VAPID_PRIVATE_KEY: 'private-key',
 };
 
 const failedPaths = (env: Record<string, unknown>) => {
@@ -68,4 +71,33 @@ describe('workerEnvSchema mail provider', () => {
       }),
     ).toContain('FROM_EMAIL');
   });
+});
+
+describe('workerEnvSchema VAPID keys', () => {
+  const withBrevo = { ...baseEnv, BREVO_API_KEY: 'b' };
+
+  it.each(['VAPID_SUBJECT', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'])(
+    'requires %s',
+    (key) => {
+      const env: Record<string, unknown> = { ...withBrevo };
+      delete env[key];
+      expect(failedPaths(env)).toEqual([key]);
+    },
+  );
+
+  it.each(['mailto:ops@example.com', 'https://app.example.com/contact'])(
+    'accepts the VAPID_SUBJECT %p',
+    (subject) => {
+      expect(failedPaths({ ...withBrevo, VAPID_SUBJECT: subject })).toEqual([]);
+    },
+  );
+
+  it.each(['ops@example.com', 'http://app.example.com', 'not a subject'])(
+    'rejects the VAPID_SUBJECT %p (push services need a mailto: or https: contact)',
+    (subject) => {
+      expect(failedPaths({ ...withBrevo, VAPID_SUBJECT: subject })).toEqual([
+        'VAPID_SUBJECT',
+      ]);
+    },
+  );
 });

@@ -4,6 +4,7 @@ import { MailModule, type MailProviderName } from '@repo/mail';
 import { QueueModule, QUEUES, SharedModule } from '@repo/shared';
 import { BullBoardDashboardModule } from './bull-board/bull-board.module';
 import { EmailConsumer } from './consumer/email.consumer';
+import { PushConsumer } from './consumer/push.consumer';
 import { workerEnvSchema } from './env';
 import { DlqModule } from './dlq/dlq.module';
 import { QueueMetricsService } from './metrics/queue-metrics.service';
@@ -14,7 +15,7 @@ import { QueueMetricsService } from './metrics/queue-metrics.service';
       validate: (c) => workerEnvSchema.parse(c),
       metrics: { appName: 'worker' },
     }),
-    QueueModule.registerQueues([QUEUES.EMAIL]),
+    QueueModule.registerQueues([QUEUES.EMAIL, QUEUES.PUSH]),
     MailModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -36,6 +37,6 @@ import { QueueMetricsService } from './metrics/queue-metrics.service';
     BullBoardDashboardModule,
   ],
   controllers: [],
-  providers: [EmailConsumer, QueueMetricsService],
+  providers: [EmailConsumer, PushConsumer, QueueMetricsService],
 })
 export class AppModule {}

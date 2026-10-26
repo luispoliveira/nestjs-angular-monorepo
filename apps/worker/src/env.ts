@@ -10,6 +10,15 @@ export const workerEnvSchema = baseEnvSchema
     RESEND_API_KEY: z.string().min(1).optional(),
     FROM_EMAIL: z.email(),
     FROM_NAME: z.string().default(''),
+    // Web push (VAPID): generate with `npx web-push generate-vapid-keys`. The
+    // subject is the contact push services get in touch with on abuse.
+    VAPID_SUBJECT: z
+      .string()
+      .refine((value) => /^(mailto:|https:\/\/)\S+$/.test(value), {
+        message: 'VAPID_SUBJECT must be a mailto: or https: URL',
+      }),
+    VAPID_PUBLIC_KEY: z.string().min(1),
+    VAPID_PRIVATE_KEY: z.string().min(1),
     DEV_EMAIL: z.email().optional(),
   })
   .superRefine((env, ctx) => {

@@ -89,6 +89,9 @@
 - [x] 9.2 fix: repo root: in `ecosystem.config.js` spread the shared env first and set `NODE_ENV`/`PORT` after it, run QA with `NODE_ENV: 'production'`, and parse the file with `util.parseEnv` instead of `dotenv`; add `--env $(ENV)` to the `Makefile` targets that call `pm2`; add a `test:deploy` script to the root `package.json`. Verify `pnpm test:deploy` passes and `node -e "require('./ecosystem.config.js')"` loads.
 - [x] 9.3 docs: DEPLOY-PM2.md and DEPLOY.md: optional variables must be left out, never empty (`DEV_EMAIL=` and `SENTRY_DSN=` fail `z.email()`/`z.url()`); record the `--env` and `NODE_ENV` gotchas in `.claude/corner-cases/deploy-build.md`. Verify the examples no longer show an empty optional variable.
 - [x] 9.4 chore: commit group 9 with `/commit`. Verify the gate passes.
+- [x] 9.5 test: repo root: extend `scripts/ecosystem-config.test.cjs` for the rest of the `Makefile`: no Next.js leftovers (`.next`, `NEXT_PUBLIC`), the `logs` example names a real PM2 app, and `setup` creates the directory the ecosystem writes its logs to. Verify with `pnpm test:deploy --test-name-pattern Makefile` that the new cases fail.
+- [x] 9.6 fix: repo root: in the `Makefile`, drop the Next.js copy steps and the env sourcing from `build` (the Angular build reads no environment variables), use a real app name in the `logs` example, and make `setup` create `./logs` instead of `/var/log/pm2`. Verify the Makefile tests pass and `make -n build setup` prints the expected commands.
+- [x] 9.7 chore: commit the Makefile fix with `/commit`. Verify the gate passes.
 
 ## 10. Integration verification
 
@@ -101,4 +104,4 @@
   - the production build is installable, and reloading offline renders the shell;
   - Bull Board lists all four queues with links redacted.
   Verify each check is recorded in the verify output.
-- [ ] 10.2 Run `openspec validate port-crm-improvements --strict` and `pnpm build && pnpm test`. Verify both pass.
+- [x] 10.2 Run `openspec validate port-crm-improvements --strict` and `pnpm build && pnpm test`. Verify both pass.

@@ -14,14 +14,11 @@ deploy:
 	$(PM2) reload $(ECOSYSTEM) --env $(ENV) --update-env
 	$(PM2) save
 
-# Build all apps + copy Next.js static files
-# NEXT_PUBLIC_* vars must be present at build time (Next.js bakes them into the
-# client bundle) — next build only reads .env* from apps/web/, never the repo
-# root, so the shared env file must be exported into this shell first.
+# Build all apps. The web app is a static Angular bundle (apps/web/dist/web/browser/)
+# served by nginx; its configuration is compiled in from apps/web/src/environments/,
+# not read from environment variables, so there is nothing to export here.
 build:
-	bash -c 'set -a; [ -f .env.$(ENV) ] && source .env.$(ENV) || source .env; set +a; pnpm build'
-	cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
-	cp -r apps/web/public       apps/web/.next/standalone/apps/web/public
+	pnpm build
 
 # Run Prisma migrations
 migrate:
@@ -44,13 +41,12 @@ restart:
 status:
 	$(PM2) status
 
-# Logs (all or specific: make logs APP=tx-api)
+# Logs (all or specific: make logs APP=api)
 logs:
 	$(PM2) logs $(APP)
 
-# First-time setup: create log dir and start
+# First-time setup: create the log directory the ecosystem writes to, and start
 setup:
-	sudo mkdir -p /var/log/pm2
-	sudo chown $$USER:$$USER /var/log/pm2
+	mkdir -p logs
 	$(MAKE) start
 	$(PM2) startup

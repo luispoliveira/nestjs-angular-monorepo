@@ -87,6 +87,8 @@ Adding one: write the entry in its area file (`## <the gotcha, as a claim>` + sy
 - `pnpm update-packages` (`ncu -u`) will happily jump to a release candidate or an unsupported major
 - An app that uses `createZodDto` must declare `nestjs-zod` itself — pnpm does not hoist `packages/shared`'s dependencies
 - `pnpm lint` at the root rewrites the NestJS apps' sources
+- PM2 applies an `env_<name>` block only when `--env <name>` is passed — and the shared env file must not win over `PORT`/`NODE_ENV`
+- An empty optional environment variable is not "absent" — it fails validation
 
 ## [Testing](corner-cases/testing.md)
 

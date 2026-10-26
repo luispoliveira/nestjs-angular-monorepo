@@ -184,7 +184,7 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `RESEND_API_KEY` | `<API key do Resend>`                                                 | ✅ se `resend` | Obter em resend.com → API Keys; o domínio do `FROM_EMAIL` tem de estar verificado |
 | `FROM_EMAIL`     | `noreply@<dominio-frontend>`                                                   | ✅          | Endereço de email remetente                               |
 | `FROM_NAME`      | `<Nome da App>`                                                       | ✅          | Nome do remetente nos emails                              |
-| `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Em produção pode ficar em branco ou igual ao `FROM_EMAIL` |
+| `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Só para desenvolvimento. Em produção **omitir** a variável: vazia falha a validação (`z.email()`) |
 | `VAPID_SUBJECT`  | `mailto:<email da equipa>`                                            | ✅          | Contacto para o serviço de push (`mailto:` ou `https:`). Valor inválido impede o arranque |
 | `VAPID_PUBLIC_KEY`  | `<chave pública>`                                                  | ✅          | Par gerado com `npx web-push generate-vapid-keys`; **igual** ao da `api` |
 | `VAPID_PRIVATE_KEY` | `<chave privada>`                                                  | ✅          | Segredo: só o `worker` a tem. Trocá-la invalida todas as subscrições existentes |

@@ -45,3 +45,11 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 ## `pnpm lint` at the root rewrites the NestJS apps' sources
 
 The `lint` script of `apps/api`, `auth`, `notifications`, `worker` and `cron` is `eslint ... --fix`, so the Turborepo `pnpm lint` edits files instead of only checking them, and leaves a dirty working tree that looks like the change's own work. Run `git status` after a root lint and `git checkout --` what you did not mean to touch, or lint without fixing: `pnpm --filter <app> exec eslint <files>`. `apps/web`'s `ng lint --max-warnings 0` does not fix.
+
+## PM2 applies an `env_<name>` block only when `--env <name>` is passed — and the shared env file must not win over `PORT`/`NODE_ENV`
+
+`ecosystem.config.js` defines only `env_production` and `env_qa` blocks, so `pm2 start|reload|restart` **without** `--env` starts the apps with no environment at all (they fail validation at boot). The `Makefile` passes `--env $(ENV)` on every such target; do the same by hand. Inside each block the shared file (`.env.<name>`, falling back to `.env`) is spread **first** and the app's own `NODE_ENV`/`PORT` after it (`appEnv()`): the other order let a `PORT` in the shared file put all five apps on one port. QA runs with `NODE_ENV=production` because `baseEnvSchema.NODE_ENV` accepts only `development | production | test`; the `.env.qa` file is what makes it QA. The file is parsed with `util.parseEnv`, not `dotenv`, which the repo root does not install. Pinned by `scripts/ecosystem-config.test.cjs` (`pnpm test:deploy`); the test writes real `.env*` files, so it cannot run inside a sandbox that blocks reading them.
+
+## An empty optional environment variable is not "absent" — it fails validation
+
+`DEV_EMAIL=` or `SENTRY_DSN=` left empty in a `.env` file parses to the empty string, and `z.email().optional()` / `z.url().optional()` reject `''` (only `undefined` is optional), so the app refuses to boot with an error naming the variable. Omit or comment out an optional variable you do not use; never leave it blank. `DEPLOY-PM2.md` and the `.env.example` files follow this.

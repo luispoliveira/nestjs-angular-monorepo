@@ -11,7 +11,7 @@ deploy:
 	pnpm install --frozen-lockfile
 	$(MAKE) build
 	$(MAKE) migrate
-	$(PM2) reload $(ECOSYSTEM) --update-env
+	$(PM2) reload $(ECOSYSTEM) --env $(ENV) --update-env
 	$(PM2) save
 
 # Build all apps + copy Next.js static files
@@ -29,7 +29,7 @@ migrate:
 
 # First-time startup
 start:
-	$(PM2) start $(ECOSYSTEM)
+	$(PM2) start $(ECOSYSTEM) --env $(ENV)
 	$(PM2) save
 
 # Stop all services
@@ -38,7 +38,7 @@ stop:
 
 # Restart all services
 restart:
-	$(PM2) restart $(ECOSYSTEM) --update-env
+	$(PM2) restart $(ECOSYSTEM) --env $(ENV) --update-env
 
 # Status
 status:

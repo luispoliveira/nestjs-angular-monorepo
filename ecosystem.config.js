@@ -19,12 +19,15 @@
  *   .env.production   (production)
  *   .env.qa           (qa / staging)
  *
- * App-specific vars (PORT, HOSTNAME) are defined directly below.
+ * App-specific vars (PORT) are defined directly below and always win over the
+ * shared file. Every `pm2 start|reload|restart` MUST pass `--env <name>`: PM2
+ * only applies an `env_<name>` block when asked, and without one the apps boot
+ * with no environment at all (the Makefile always passes `--env $(ENV)`).
  */
 
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
+const { parseEnv } = require('util');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,7 +53,26 @@ function loadSharedEnv(envName) {
     return {};
   }
 
-  return dotenv.parse(fs.readFileSync(file));
+  // util.parseEnv, not `dotenv`: the repo root does not install dotenv, so
+  // requiring it here fails with MODULE_NOT_FOUND on a clean server.
+  return parseEnv(fs.readFileSync(file, 'utf8'));
+}
+
+/**
+ * The environment block of one app: the shared file first, then the app's own
+ * values, so a `PORT` or `NODE_ENV` in the shared file can never override them
+ * (it would put every app on one port).
+ *
+ * NODE_ENV is `production` for QA too: the env schemas accept only
+ * development | production | test, so `qa` fails validation at boot. What makes
+ * a deployment QA is the `.env.qa` file, not NODE_ENV.
+ *
+ * @param {string} envName - 'production' | 'qa', selects the shared env file
+ * @param {number} port
+ * @returns {Record<string, string | number>}
+ */
+function appEnv(envName, port) {
+  return { ...loadSharedEnv(envName), NODE_ENV: 'production', PORT: port };
 }
 
 // ---------------------------------------------------------------------------
@@ -138,16 +160,8 @@ module.exports = {
       script: './apps/auth/dist/main.js',
       error_file: `${LOG_DIR}/auth-error.log`,
       out_file: `${LOG_DIR}/auth-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 3000,
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 3000,
-        ...loadSharedEnv('qa'),
-      },
+      env_production: appEnv('production', 3000),
+      env_qa: appEnv('qa', 3000),
     },
 
     // -------------------------------------------------------------------------
@@ -159,16 +173,8 @@ module.exports = {
       script: './apps/api/dist/main.js',
       error_file: `${LOG_DIR}/api-error.log`,
       out_file: `${LOG_DIR}/api-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 3100,
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 3100,
-        ...loadSharedEnv('qa'),
-      },
+      env_production: appEnv('production', 3100),
+      env_qa: appEnv('qa', 3100),
     },
 
     // -------------------------------------------------------------------------
@@ -180,16 +186,8 @@ module.exports = {
       script: './apps/notifications/dist/main.js',
       error_file: `${LOG_DIR}/notifications-error.log`,
       out_file: `${LOG_DIR}/notifications-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 3200,
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 3200,
-        ...loadSharedEnv('qa'),
-      },
+      env_production: appEnv('production', 3200),
+      env_qa: appEnv('qa', 3200),
     },
 
     // -------------------------------------------------------------------------
@@ -201,16 +199,8 @@ module.exports = {
       script: './apps/worker/dist/main.js',
       error_file: `${LOG_DIR}/worker-error.log`,
       out_file: `${LOG_DIR}/worker-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 3300,
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 3300,
-        ...loadSharedEnv('qa'),
-      },
+      env_production: appEnv('production', 3300),
+      env_qa: appEnv('qa', 3300),
     },
 
     // web has no PM2 process: the Angular build is a static bundle
@@ -230,16 +220,8 @@ module.exports = {
       script: './apps/cron/dist/main.js',
       error_file: `${LOG_DIR}/cron-error.log`,
       out_file: `${LOG_DIR}/cron-out.log`,
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 3400,
-        ...loadSharedEnv('production'),
-      },
-      env_qa: {
-        NODE_ENV: 'qa',
-        PORT: 3400,
-        ...loadSharedEnv('qa'),
-      },
+      env_production: appEnv('production', 3400),
+      env_qa: appEnv('qa', 3400),
     },
   ],
 };

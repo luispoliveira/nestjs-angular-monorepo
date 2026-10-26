@@ -83,9 +83,16 @@
 - [x] 8.3 chore: .claude: port the `crud-module` skill, adapted to `customers`, cuid ids and template paths. Update the CLAUDE.md "Corner Cases Memory" section. Verify that every path the skill references exists.
 - [x] 8.4 chore: commit group 8 with `/commit`. Verify the gate passes.
 
-## 9. Integration verification
+## 9. PM2 deployment config
 
-- [ ] 9.1 Run `/verify` end to end:
+- [x] 9.1 test: repo root: add `scripts/ecosystem-config.test.cjs` (`node:test`, no dependency) pinning the config: every app's `env_production` and `env_qa` has a `NODE_ENV` the env schemas accept; the app's own `PORT` and `NODE_ENV` win over a shared env file that also declares them; shared variables still reach the app; a missing env file warns and returns an empty set; the config does not `require('dotenv')`; every `pm2 start|reload|restart` line in the `Makefile` passes `--env $(ENV)`. Verify with `node --test scripts/ecosystem-config.test.cjs` that the new cases fail.
+- [x] 9.2 fix: repo root: in `ecosystem.config.js` spread the shared env first and set `NODE_ENV`/`PORT` after it, run QA with `NODE_ENV: 'production'`, and parse the file with `util.parseEnv` instead of `dotenv`; add `--env $(ENV)` to the `Makefile` targets that call `pm2`; add a `test:deploy` script to the root `package.json`. Verify `pnpm test:deploy` passes and `node -e "require('./ecosystem.config.js')"` loads.
+- [x] 9.3 docs: DEPLOY-PM2.md and DEPLOY.md: optional variables must be left out, never empty (`DEV_EMAIL=` and `SENTRY_DSN=` fail `z.email()`/`z.url()`); record the `--env` and `NODE_ENV` gotchas in `.claude/corner-cases/deploy-build.md`. Verify the examples no longer show an empty optional variable.
+- [x] 9.4 chore: commit group 9 with `/commit`. Verify the gate passes.
+
+## 10. Integration verification
+
+- [ ] 10.1 Run `/verify` end to end:
   - admin creates a user; the invitation email arrives (dev redirect); the user sets a password, gets the activated email and signs in;
   - the 11th sign-in within a minute gets 429;
   - `/metrics` returns 401 with `NODE_ENV=production` and no token;
@@ -94,4 +101,4 @@
   - the production build is installable, and reloading offline renders the shell;
   - Bull Board lists all four queues with links redacted.
   Verify each check is recorded in the verify output.
-- [ ] 9.2 Run `openspec validate port-crm-improvements --strict` and `pnpm build && pnpm test`. Verify both pass.
+- [ ] 10.2 Run `openspec validate port-crm-improvements --strict` and `pnpm build && pnpm test`. Verify both pass.

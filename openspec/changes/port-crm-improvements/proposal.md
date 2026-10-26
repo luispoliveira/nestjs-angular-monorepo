@@ -30,6 +30,9 @@
 - The web app can be installed: manifest, `ngsw` service worker and icons. The static shell loads offline, and API data is never cached.
 - Below the mobile breakpoint, dialogs open full-screen.
 
+**Deployment config (no spec)**
+- `ecosystem.config.js` and the `Makefile` are fixed so the PM2 deploy actually boots the apps: QA runs with a valid `NODE_ENV`, an app's own `PORT`/`NODE_ENV` can no longer be overridden by the shared env file, the config no longer needs a `dotenv` the repo root does not have, and every `pm2 start|reload|restart` passes `--env`, without which PM2 applies no environment block at all. `DEPLOY-PM2.md` stops telling operators to leave optional variables empty (an empty `DEV_EMAIL` fails validation). Found while comparing with the CRM fork, which had already fixed it.
+
 **Developer tooling (no spec)**
 - `.claude/CORNER_CASES.md` is split into an index plus one file per area under `.claude/corner-cases/`. The generic entries found in the CRM are imported.
 - New `crud-module` skill, adapted to the `customers` reference slice.
@@ -77,6 +80,7 @@ None blocking. The defaults chosen here are Brevo as the default provider, a tes
 
 ## Impact
 
+- **Repo root:** `ecosystem.config.js`, `Makefile`, `DEPLOY-PM2.md`, a `node:test` script for the config.
 - **Apps:** `apps/auth` (rate limit, invitation hooks), `apps/api` (push module), `apps/worker` (mail provider, push consumer, push DLQ, Bull Board), `apps/notifications` (invitation and activation handlers), `apps/web` (PWA, push opt-in, create-user dialog, dialog sizing).
 - **Packages:** `packages/shared` (metrics guard, `SanitizeUtil`, `PushProducer`, constants), `packages/shared-types` (push and invitation schemas), `packages/mail` (Resend, `html`), `packages/database` (`PushSubscription` model, seeder retry).
 - **New dependencies:** `resend` (`packages/mail`), `web-push` (`apps/worker`), `@angular/service-worker` (`apps/web`).

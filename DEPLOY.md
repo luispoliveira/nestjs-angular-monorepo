@@ -348,6 +348,8 @@ sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 
 Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `CORS_ORIGIN=https://<dominio-frontend>`, `COOKIE_DOMAIN=.<dominio-pai>` (ver `apps/auth/.env.example`). O prefixo `Secure` do cookie deriva de `BETTER_AUTH_URL` começar por `https://` — nunca dos headers do proxy.
 
+**PWA / service worker.** O `web` é instalável e regista um service worker (`ngsw-worker.js`) em builds de produção. O nginx **tem** de servir `ngsw-worker.js` e `ngsw.json` com `Cache-Control: no-cache` (já feito em `docs/deploy/nginx/frontend.conf` e no `nginx.conf.template` do container); se um proxy ou CDN à frente os guardar em cache, os utilizadores ficam presos a um build antigo. Verificar após o deploy: `curl -sI https://<dominio-frontend>/ngsw.json | grep -i cache-control`. Os ícones (favicon, ícone de instalação e ícones do manifest) vivem todos em `apps/web/public/icons/`: para pôr a marca do projeto, substituir esses ficheiros mantendo os nomes e tamanhos (192 e 512, mais as variantes `-maskable` com a marca dentro da zona segura central de 80%), e ajustar `name`, `short_name` e `theme_color` em `apps/web/public/manifest.webmanifest` e o `<meta name="theme-color">` em `apps/web/src/index.html`.
+
 > Os serviços `cron` (porta 3400), `notifications` (porta 3200) e `worker` (porta 3300)
 > **não devem ser expostos publicamente** — comunicam apenas via Redis/BullMQ internamente.
 > A única exceção é o dashboard de filas do `worker`, que chega ao browser **apenas** pelo

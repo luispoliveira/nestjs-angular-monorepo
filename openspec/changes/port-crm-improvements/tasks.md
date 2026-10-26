@@ -41,11 +41,11 @@
 
 ## 4. PWA
 
-- [ ] 4.1 test: apps/web: spec that `app.config` provides the service worker only when not in dev mode, and a spec that reads `ngsw-config.json` and asserts there are no `dataGroups` and that `navigationUrls` excludes `/api/**`. Verify they fail.
-- [ ] 4.2 feat: apps/web: add `@angular/service-worker`, `ngsw-config.json`, `manifest.webmanifest`, `public/icons/*` (neutral placeholder mark) and the `index.html` links (D8). Verify the specs pass and the production build emits `ngsw-worker.js`.
-- [ ] 4.3 build: apps/web: make nginx serve `ngsw-worker.js` and `ngsw.json` with `Cache-Control: no-cache`. Verify with `curl -I` against the built container.
-- [ ] 4.4 docs: README/DEPLOY.md: how to replace the icons and the no-cache requirement. Add the "SW serves index.html for `/api/**`" corner case. Verify the docs mention them.
-- [ ] 4.5 chore: commit group 4 with `/commit`. Verify the gate passes.
+- [x] 4.1 test: apps/web: spec that `app.config` provides the service worker only when not in dev mode, and a spec that reads `ngsw-config.json` and asserts there are no `dataGroups` and that `navigationUrls` excludes `/api/**`. Verify they fail.
+- [x] 4.2 feat: apps/web: add `@angular/service-worker`, `ngsw-config.json`, `manifest.webmanifest`, `public/icons/*` (neutral placeholder mark) and the `index.html` links (D8). Verify the specs pass and the production build emits `ngsw-worker.js`.
+- [x] 4.3 build: apps/web: make nginx serve `ngsw-worker.js` and `ngsw.json` with `Cache-Control: no-cache`. Verify with `curl -I` against the built container.
+- [x] 4.4 docs: README/DEPLOY.md: how to replace the icons and the no-cache requirement. Add the "SW serves index.html for `/api/**`" corner case. Verify the docs mention them.
+- [x] 4.5 chore: commit group 4 with `/commit`. Verify the gate passes.
 
 ## 5. Web push: backend
 

@@ -23,6 +23,7 @@
     "@angular/material": "^22.2.1",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
+    "@angular/service-worker": "^22.2.3",
     "@repo/shared-types": "workspace:*",
     "@tanstack/angular-query-experimental": "5.104.0",
     "better-auth": "^1.7.6",

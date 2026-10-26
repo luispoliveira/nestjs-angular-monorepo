@@ -359,6 +359,10 @@ The frontend's own API is always the relative `/api` prefix, proxied same-origin
 
 `SENTRY_DSN` is optional on every NestJS app — leave it empty to disable Sentry. `METRICS_TOKEN` may be left empty outside production (the metrics endpoint is then open), but in production an empty token makes `/api/metrics` refuse every request.
 
+### PWA
+
+The web app is installable (`apps/web/public/manifest.webmanifest`) and, in production builds only, registers an Angular service worker that caches the static shell so it still loads after a brief loss of connectivity. API data (`/api/**`) is never cached, and a navigation to an `/api/` path reaches the server instead of receiving `index.html`. To brand it, replace the placeholder files in `apps/web/public/icons/` (same names and sizes) and edit `name`, `short_name` and `theme_color` in the manifest. The web server must serve `ngsw-worker.js` and `ngsw.json` with `Cache-Control: no-cache` (see [DEPLOY.md](DEPLOY.md)).
+
 ## Internal Packages
 
 All internal packages use the `@repo/` prefix.

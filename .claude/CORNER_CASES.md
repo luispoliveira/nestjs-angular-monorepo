@@ -202,6 +202,18 @@ Under that distribution model, an incremental migration added here would reach *
 
 ## Deployment / Nginx
 
+### nginx serves `manifest.webmanifest` as `application/octet-stream`
+
+The stock `mime.types` (including the `nginx:1-alpine` image) has no `webmanifest` entry, so the manifest is served as `application/octet-stream`. Chrome still installs from it, but other tooling (Lighthouse, some browsers) expects `application/manifest+json`. Both nginx configs add an exact-match `location = /manifest.webmanifest { default_type application/manifest+json; }` — `default_type` only applies to unmapped extensions, and a `types {}` block must **not** be used instead (inside a server/location it replaces the entire MIME map, turning every `.js`/`.css` into octet-stream).
+
+### The Angular service worker serves `index.html` for `/api/**` navigations
+
+`ngsw`'s default `navigationUrls` is `['/**', '!/**/*.*', ...]`, so a browser **navigation** to `/api/anything` (the address bar, a link, an OAuth redirect) is answered by the service worker with the cached `index.html` instead of reaching nginx. `fetch`/XHR calls are not navigations and are unaffected, which is why this only shows up when someone opens an API URL directly. `apps/web/ngsw-config.json` adds `'!/api/**'`; `src/app/pwa.spec.ts` fails if it is removed. The same file declares no `dataGroups`, so API responses are never cached either.
+
+### `ngsw-worker.js` and `ngsw.json` must not be cached by the web server
+
+If either is served with a long `Cache-Control`/`Expires`, browsers keep the old worker and manifest, so a deploy never reaches users who already have the app. Both nginx configs (`apps/web/nginx.conf.template`, `docs/deploy/nginx/frontend.conf`) have an explicit `no-cache` location **before** the static-extension regex (nginx takes the first matching regex location). In the host config an `add_header` inside a location discards the `server`-level ones, so the security headers are repeated there.
+
 ### SPA history fallback can mask a genuinely missing static asset as a 200
 
 **Symptom:** a client-side route (e.g. `/dashboard`) correctly survives a direct navigation or hard reload, but a request for a static asset that no longer exists (e.g. a stale hashed JS chunk referenced by a cached `index.html` after a new deploy) returns `200` with the app shell's HTML instead of a `404` — the failure is silently swallowed instead of surfacing.

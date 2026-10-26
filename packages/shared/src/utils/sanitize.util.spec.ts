@@ -25,6 +25,28 @@ describe('SanitizeUtil', () => {
       expect(result.Authorization).toBe('[SANITIZED]');
     });
 
+    it('should redact compound keys by normalised substring', () => {
+      const input = {
+        clientSecret: 's',
+        x_api_key: 'k',
+        'refresh-token': 't',
+        name: 'Ana',
+      };
+      const result = SanitizeUtil.sanitize(input);
+      expect(result.clientSecret).toBe('[SANITIZED]');
+      expect(result.x_api_key).toBe('[SANITIZED]');
+      expect(result['refresh-token']).toBe('[SANITIZED]');
+      expect(result.name).toBe('Ana');
+    });
+
+    it('should redact a nested newPassword key', () => {
+      const result = SanitizeUtil.sanitize({
+        user: { newPassword: 'p', email: 'a@b.c' },
+      });
+      expect(result.user.newPassword).toBe('[SANITIZED]');
+      expect(result.user.email).toBe('a@b.c');
+    });
+
     it('should return the same value when input is falsy', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(SanitizeUtil.sanitize(null as any)).toBeNull();

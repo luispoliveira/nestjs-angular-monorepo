@@ -14,11 +14,13 @@ import { AuthGuard, AuthModule } from '@thallesp/nestjs-better-auth';
 import { betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
 import { twoFactor } from 'better-auth/plugins/two-factor';
+import Redis from 'ioredis';
 import { AuthAuditHook } from './audit/auth-audit.hook';
 import { withCorrelationId } from './audit/correlation.middleware';
 import { AuthController } from './auth.controller';
 import { authEnvSchema } from './env';
 import { LocalAuthService, publisherProxy } from './local-auth.service';
+import { createRedisRateLimitStorage } from './rate-limit.storage';
 
 @Module({
   imports: [
@@ -37,6 +39,14 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
         const googleClientSecret = configService.get<string>(
           'GOOGLE_CLIENT_SECRET',
         );
+        // Shared Redis counter for the auth rate limiter, so the limit holds
+        // across auth workers.
+        const rateLimitRedis = new Redis({
+          host: configService.getOrThrow<string>('REDIS_HOST'),
+          port: configService.getOrThrow<number>('REDIS_PORT'),
+          password: configService.get<string>('REDIS_PASSWORD') || undefined,
+          maxRetriesPerRequest: null,
+        });
         return {
           // Gives audit events recorded inside better-auth hooks a
           // correlation id (better-auth bypasses Nest's CLS middleware).
@@ -56,6 +66,24 @@ import { LocalAuthService, publisherProxy } from './local-auth.service';
               .getOrThrow<string>('CORS_ORIGIN')
               .split(',')
               .filter((origin) => origin !== '*'),
+            // /api/auth/* is served outside the Nest guard pipeline, so the
+            // global throttler never reaches it. Enabled everywhere but `test`
+            // (e2e suites hammer sign-in), backed by shared Redis, with strict
+            // rules on the brute-forceable credential paths.
+            rateLimit: {
+              enabled: configService.get<string>('NODE_ENV') !== 'test',
+              window: 60,
+              max: 100,
+              customRules: {
+                '/sign-in/email': { window: 60, max: 10 },
+                '/sign-up/email': { window: 60, max: 5 },
+                '/two-factor/verify-totp': { window: 60, max: 10 },
+                '/two-factor/verify-backup-code': { window: 60, max: 10 },
+                '/request-password-reset': { window: 60, max: 3 },
+                '/reset-password': { window: 60, max: 5 },
+              },
+              customStorage: createRedisRateLimitStorage(rateLimitRedis),
+            },
             advanced: {
               // better-auth silently skips origin validation whenever
               // NODE_ENV=test (its own isTest() heuristic), unless this is

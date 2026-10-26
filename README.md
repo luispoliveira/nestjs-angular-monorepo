@@ -351,7 +351,7 @@ export const environment = {
 
 The frontend's own API is always the relative `/api` prefix, proxied same-origin (`apps/web/proxy.conf.json` in dev, nginx in production) — never a configured host.
 
-`METRICS_TOKEN` and `SENTRY_DSN` are optional on every NestJS app — leave them empty to disable auth on the metrics endpoint / disable Sentry.
+`SENTRY_DSN` is optional on every NestJS app — leave it empty to disable Sentry. `METRICS_TOKEN` may be left empty outside production (the metrics endpoint is then open), but in production an empty token makes `/api/metrics` refuse every request.
 
 ## Internal Packages
 

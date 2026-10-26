@@ -1,19 +1,21 @@
+// Matched as substrings against the normalized key (lowercased, with `_`/`-`
+// stripped), so `clientSecret`, `x-api-key` and `refresh_token` are all caught.
 const SENSITIVE_KEYS = [
   'password',
   'token',
   'authorization',
-  'accesstoken',
-  'refreshtoken',
+  'apikey',
   'cardnumber',
   'cvv',
   'ssn',
   'secret',
-  'access_token',
-  'x-api-key',
   // Protected PII (pii-field-encryption spec) — append new PII keys here and
   // in pino's redact.paths.
   'taxid',
 ];
+
+const normalizeKey = (key: string): string =>
+  key.toLowerCase().replace(/[_-]/g, '');
 
 // Query parameters whose values never reach the logs: search terms can carry
 // PII (a NIF search sends it in plaintext; names and emails too).
@@ -35,7 +37,8 @@ export class SanitizeUtil {
 
       for (const key in currentObj) {
         if (Object.prototype.hasOwnProperty.call(currentObj, key)) {
-          if (SENSITIVE_KEYS.includes(key.toLowerCase())) {
+          const normalizedKey = normalizeKey(key);
+          if (SENSITIVE_KEYS.some((pattern) => normalizedKey.includes(pattern))) {
             currentObj[key] = REDACTED;
           } else if (
             typeof currentObj[key] === 'object' &&

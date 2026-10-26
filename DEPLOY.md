@@ -362,6 +362,7 @@ Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `C
 - **Redis com password**: Configurar `requirepass` no Redis e definir `REDIS_PASSWORD` em todos os serviços.
 - **`CORS_ORIGIN`**: Nunca usar `*` em produção. Usar o domínio exato de cada origem: `https://<dominio-frontend>` / `https://<dominio-auth>`.
 - **`BETTER_AUTH_SECRET`** e **`ENCRYPTION_KEY`**: Mínimo 32 caracteres, gerados com `openssl rand -base64 32`. Guardar num gestor de secrets (Vault, AWS Secrets Manager, etc.).
+- **`METRICS_TOKEN`**: Obrigatório em produção em todos os serviços NestJS. Com `NODE_ENV=production` e sem token, `/api/metrics` recusa **todos** os pedidos (401). Definir o mesmo valor no scraper Prometheus (`Authorization: Bearer <token>`).
 - **Swagger/OpenAPI**: Está desativado automaticamente quando `NODE_ENV=production`.
 - **`ADMIN_PASSWORD`**: Usar uma password forte e alterar no primeiro login.
 - **Google OAuth** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`): Configurar apenas se o login social estiver ativo. Obter em [Google Cloud Console](https://console.cloud.google.com/).
@@ -382,6 +383,7 @@ Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `C
 - [ ] `DATABASE_URL` aponta para host Docker interno (`postgres`) em todos os serviços
 - [ ] `REDIS_HOST` é `redis` (nome do serviço Docker) em todos os serviços
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
+- [ ] `METRICS_TOKEN` definido em todos os serviços NestJS (sem ele `/api/metrics` fica fechado em produção)
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth` com URL pública HTTPS do frontend
 - [ ] `BREVO_API_KEY` válida em `apps/worker`

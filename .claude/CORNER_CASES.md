@@ -71,6 +71,10 @@ If a future better-auth upgrade reports a similar mismatch for a different plugi
 
 **Fix:** `BootstrapUtil`'s `enableCors` (see `packages/shared/src/utils/bootstrap.util.ts`) always calls Nest's `app.enableCors({ origin: [...] })` with an **array** (splitting the comma-joined `CORS_ORIGIN` string) — the `cors` package only pattern-matches when given a function; given an array it does a literal string comparison, so a literal `"*"` entry never equals any real browser `Origin` header and is effectively a no-op that grants nothing. better-auth's `trustedOrigins`, by contrast, treats a bare `*` as a genuine wildcard pattern (`matchesOriginPattern`) that trusts **every** origin. `apps/auth/src/app.module.ts` filters `*` out of the list before it reaches `trustedOrigins` for exactly this reason — do not "simplify" that filter on the assumption the two behave the same.
 
+### The global throttler does not cover `/api/auth/*` — better-auth limits itself
+
+`SharedModule` registers `ThrottlerModule` but no global `APP_GUARD` for it, so Nest rate limiting is opt-in per route via `@RateLimit()`. better-auth serves `/api/auth/*` with its own handler, outside the Nest guard pipeline, so `@RateLimit()` can never reach sign-in. better-auth's own limiter is production-only and in-memory by default (per worker), which left dev with no login throttle at all. `apps/auth` therefore sets `betterAuth({ rateLimit })` explicitly: enabled everywhere but `test` (the e2e suites hammer sign-in), strict `customRules` on `/sign-in/email`, `/sign-up/email`, `/two-factor/verify-*`, `/request-password-reset`, `/reset-password`, backed by a shared-Redis `customStorage` (`rate-limit.storage.ts`: atomic Lua `INCR`+`EXPIRE`, fails open if Redis is down). In better-auth 1.7.6 a refused request is a `429` carrying `X-Retry-After` (not `Retry-After`), and `/forget-password` no longer exists — only `/request-password-reset`.
+
 ---
 
 ## Queues (BullMQ)
@@ -155,6 +159,14 @@ Under that distribution model, an incremental migration added here would reach *
 **What this would NOT change, if ever exercised:** an already-existing derived project (which has its own independent migration history) still could not receive such a change via a migration file — it never receives one. It would need a documented backfill *procedure* instead.
 
 **Do not** apply this exception to a project that has been created *from* this template and is now itself a live system with real users — at that point the normal rule applies, because the distribution model that would justify the exception (no consumer ever receives the migration) does not hold for it.
+
+### The seeder can hit `ECONNREFUSED` on a cold boot, on a healthy Postgres
+
+**Symptom:** an app that seeds on boot occasionally crashes at startup with `ECONNREFUSED` from its own seeder even though Postgres is up.
+
+**Cause:** the `PrismaPg` driver adapter can refuse the very first query issued right after `$connect()` resolves (a connection-pool race; root cause unconfirmed).
+
+**Fix:** `DatabaseSeederService.onModuleInit` wraps the run in `withRetry` (3 attempts, `attempt × 500 ms` back-off, a warning per failed attempt, the last error rethrown). Because the whole sequence is retried, every step added to `seed()` **must be idempotent** (find-or-skip on a natural key).
 
 ---
 

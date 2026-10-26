@@ -7,7 +7,11 @@ export class MetricsAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const token = this.configService.get<string>('METRICS_TOKEN');
-    if (!token) return true;
+    if (!token) {
+      // Fail closed in production: a forgotten METRICS_TOKEN must not silently
+      // expose /metrics. Outside production, allow unauthenticated scraping.
+      return this.configService.get<string>('NODE_ENV') !== 'production';
+    }
 
     const request = context.switchToHttp().getRequest<{ headers: Record<string, string> }>();
     const authHeader = request.headers['authorization'] ?? '';

@@ -72,9 +72,9 @@
 
 ## 7. Mobile dialogs
 
-- [ ] 7.1 test: apps/web: spec that a dialog opened with the global defaults gets the full-screen panel class or styles below the breakpoint and keeps its usual width above it. Verify it fails.
-- [ ] 7.2 feat: apps/web: add the global dialog defaults and the breakpoint CSS rule (D9). Verify the spec passes, then check the create-user dialog in Chrome at 375px and at 1280px.
-- [ ] 7.3 chore: commit group 7 with `/commit`. Verify the gate passes.
+- [x] 7.1 test: apps/web: spec that a dialog opened with the global defaults gets the full-screen panel class or styles below the breakpoint and keeps its usual width above it. Verify it fails.
+- [x] 7.2 feat: apps/web: add the global dialog defaults and the breakpoint CSS rule (D9). Verify the spec passes, then check the create-user dialog in Chrome at 375px and at 1280px.
+- [x] 7.3 chore: commit group 7 with `/commit`. Verify the gate passes.
 
 ## 8. Developer tooling
 

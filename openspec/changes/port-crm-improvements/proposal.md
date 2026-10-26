@@ -56,7 +56,7 @@
 - Converting the existing account emails (reset, verification, 2FA) to HTML. Only the new invitation and activation emails get HTML bodies.
 - Push notifications for any domain event. The template ships the channel and a test push only.
 - Offline data or offline writes.
-- Mobile card views or a mobile kanban. The template has no boards, and its sidenav already adapts to narrow screens.
+- Mobile card views, a mobile kanban and an off-canvas sidebar drawer. The template has no boards, and its sidenav is a permanent side panel (`mode="side" opened`) that this change leaves as it is; only dialogs become full-screen.
 
 ## Risks & Mitigations
 

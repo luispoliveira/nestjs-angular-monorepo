@@ -63,12 +63,12 @@
 
 ## 6. Web push: web
 
-- [ ] 6.1 test: apps/web: `PushService` specs (unsupported → reason shown, denied → blocked message, enable subscribes and POSTs, disable unsubscribes and DELETEs) and an account-page spec for the push card and the test button. Verify they fail.
-- [ ] 6.2 feat: apps/web: add `PushService` and the push card on the account page. Verify the specs pass.
-- [ ] 6.3 test: apps/web: sign-out spec: unsubscribes before `signOut`, and still signs out when unsubscribing fails. Verify it fails.
-- [ ] 6.4 feat: apps/web: unsubscribe best-effort on sign-out. Verify the spec passes.
-- [ ] 6.5 docs: .claude: corner case "`ngsw` only shows a push wrapped in `notification` and opens its URL via `data.onActionClick`". Verify the entry exists.
-- [ ] 6.6 chore: commit group 6 with `/commit`. Verify the gate passes.
+- [x] 6.1 test: apps/web: `PushService` specs (unsupported → reason shown, denied → blocked message, enable subscribes and POSTs, disable unsubscribes and DELETEs) and an account-page spec for the push card and the test button. Verify they fail.
+- [x] 6.2 feat: apps/web: add `PushService` and the push card on the account page. Verify the specs pass.
+- [x] 6.3 test: apps/web: sign-out spec: unsubscribes before `signOut`, and still signs out when unsubscribing fails. Verify it fails.
+- [x] 6.4 feat: apps/web: unsubscribe best-effort on sign-out. Verify the spec passes.
+- [x] 6.5 docs: .claude: corner case "`ngsw` only shows a push wrapped in `notification` and opens its URL via `data.onActionClick`". Verify the entry exists.
+- [x] 6.6 chore: commit group 6 with `/commit`. Verify the gate passes.
 
 ## 7. Mobile dialogs
 

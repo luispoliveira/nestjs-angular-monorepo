@@ -198,6 +198,10 @@ Without a database to hand (CI, a sandbox), generate the SQL with `prisma migrat
 
 <!-- Add Angular edge cases here -->
 
+### `ngsw-worker.js` only shows a push wrapped in `notification` — and opens its URL only through `data.onActionClick`
+
+The Angular service worker does **not** show an arbitrary Web Push payload. It shows one only when the JSON payload is `{ "notification": { title, body, icon, tag, renotify, data } }` — a flat `{ title, body }` is silently ignored (no notification, no error). A click opens nothing by default: the target has to be declared as `data.onActionClick.default = { operation: 'navigateLastFocusedOrOpen', url }`, which focuses an open tab or opens one. `PushConsumer.ngswPayload` (`apps/worker`) builds exactly this and `push.consumer.spec.ts` pins the shape; a plain `web-push` payload written by hand will "send" with a 201 and show nothing. Also: the service worker is registered only in **production** builds, so push can never be tried under `ng serve` — build with `pnpm --filter web build` and serve `dist/web/browser` (over HTTPS or `localhost`) to test on a device.
+
 ### `<mat-dialog-content class="flex …">` silently renders as `display: block`
 
 **Symptom:** dialog form fields sit side by side in narrow inline rows (and overflow the dialog) instead of stacking, even though `<mat-dialog-content>` has `flex flex-col gap-2`.

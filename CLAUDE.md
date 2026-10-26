@@ -145,9 +145,9 @@ When running OpenSpec explore mode (`/opsx:explore`, `openspec-explore` skill), 
 
 ## Corner Cases Memory
 
-**Read [.claude/CORNER_CASES.md](.claude/CORNER_CASES.md) at the start of every task.**
+**Read [.claude/CORNER_CASES.md](.claude/CORNER_CASES.md) — the index — at the start of every task, then the area file(s) under [.claude/corner-cases/](.claude/corner-cases/) for what you are about to touch.**
 
-It is a living log of non-obvious behaviours, gotchas, and edge cases discovered during development — organised by area (Zod, NestJS, Prisma, Angular, deployment, etc.). When you discover a new corner case that is not already there, append it to the relevant section. Keep each entry concise: one heading + a short description of the problem and the fix/workaround.
+It is a living log of non-obvious behaviours, gotchas, and edge cases discovered during development, with one file per area: `zod`, `nestjs`, `auth`, `queues`, `database`, `angular`, `deploy-build` and `testing`. When you discover a new corner case that is not already there, write it in its area file as `## <the gotcha, as a claim>` followed by a short description (symptom → cause → fix → where it is verified), and add its title to the index under the same area. A new area is a new file plus a new index section. Remove or update an entry the moment the code it describes changes.
 
 ---
 
@@ -155,7 +155,7 @@ It is a living log of non-obvious behaviours, gotchas, and edge cases discovered
 
 Detailed conventions referenced above live in the Copilot instruction files — read them when you need more depth than this summary:
 
-- [.claude/CORNER_CASES.md](.claude/CORNER_CASES.md) — accumulated corner cases and gotchas
+- [.claude/CORNER_CASES.md](.claude/CORNER_CASES.md) — index of the accumulated corner cases and gotchas (entries live in [.claude/corner-cases/](.claude/corner-cases/))
 - [.github/copilot-instructions.md](.github/copilot-instructions.md) — stack overview
 - [.github/instructions/nestjs-conventions.instructions.md](.github/instructions/nestjs-conventions.instructions.md)
 - [.github/instructions/angular-conventions.instructions.md](.github/instructions/angular-conventions.instructions.md)

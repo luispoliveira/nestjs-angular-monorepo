@@ -78,10 +78,10 @@
 
 ## 8. Developer tooling
 
-- [ ] 8.1 chore: .claude: split `CORNER_CASES.md` into an index plus `corner-cases/{angular,auth,database,deploy-build,nestjs,queues,testing,zod}.md`, moving the existing entries without loss. Verify the total entry count before and after matches.
-- [ ] 8.2 chore: .claude: import the CRM's generic corner cases not already present, leaving out the domain-specific ones (RH, time, MCP, TargX). Verify each imported entry names only template code paths.
-- [ ] 8.3 chore: .claude: port the `crud-module` skill, adapted to `customers`, cuid ids and template paths. Update the CLAUDE.md "Corner Cases Memory" section. Verify that every path the skill references exists.
-- [ ] 8.4 chore: commit group 8 with `/commit`. Verify the gate passes.
+- [x] 8.1 chore: .claude: split `CORNER_CASES.md` into an index plus `corner-cases/{angular,auth,database,deploy-build,nestjs,queues,testing,zod}.md`, moving the existing entries without loss. Verify the total entry count before and after matches.
+- [x] 8.2 chore: .claude: import the CRM's generic corner cases not already present, leaving out the domain-specific ones (RH, time, MCP, TargX). Verify each imported entry names only template code paths.
+- [x] 8.3 chore: .claude: port the `crud-module` skill, adapted to `customers`, cuid ids and template paths. Update the CLAUDE.md "Corner Cases Memory" section. Verify that every path the skill references exists.
+- [x] 8.4 chore: commit group 8 with `/commit`. Verify the gate passes.
 
 ## 9. Integration verification
 

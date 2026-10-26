@@ -262,4 +262,58 @@ describe('LocalAuthService', () => {
       ).rejects.toThrow('User not found');
     });
   });
+  // ===========================================================================
+  // Refused requests — better-auth runs after hooks on failures too
+  // ===========================================================================
+
+  describe('refused requests', () => {
+    const user = { id: 'user-1', email: 'user@example.com' };
+    const refused = (extra: object = {}) =>
+      ({
+        context: {
+          session: { user },
+          returned: new Error('Invalid password'),
+        },
+        ...extra,
+      }) as never;
+
+    it('should not emit emitUserPasswordChanged when /change-password was refused', () => {
+      service.handlePasswordChanged(refused());
+      expect(
+        notificationsPublisher.emitUserPasswordChanged,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should not emit emitUserTwoFactorEnabled when /two-factor/enable was refused', () => {
+      service.handleTwoFactorEnabled(refused());
+      expect(
+        notificationsPublisher.emitUserTwoFactorEnabled,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should not emit emitUserTwoFactorDisabled when /two-factor/disable was refused', () => {
+      service.handleTwoFactorDisabled(refused());
+      expect(
+        notificationsPublisher.emitUserTwoFactorDisabled,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should not emit emitUserPasswordChanged when /admin/set-user-password was refused', async () => {
+      await service.handleAdminSetPassword(
+        refused({ body: { userId: 'user-1', newPassword: 'x' } }),
+      );
+      expect(databaseService.user.findUnique).not.toHaveBeenCalled();
+      expect(
+        notificationsPublisher.emitUserPasswordChanged,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should return without throwing even when the refused request has no session', () => {
+      expect(() =>
+        service.handlePasswordChanged({
+          context: { returned: new Error('Unauthorized') },
+        } as never),
+      ).not.toThrow();
+    });
+  });
 });

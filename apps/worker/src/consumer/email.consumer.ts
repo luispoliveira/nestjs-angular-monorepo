@@ -5,10 +5,18 @@ import {
   WorkerHost,
 } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { MailService } from '@repo/mail';
+import {
+  MailService,
+  renderAccountActivatedEmail,
+  renderAccountInvitationEmail,
+} from '@repo/mail';
 import {
   JOB_PATTERNS,
   QUEUES,
+  SendAccountActivatedEmailInput,
+  sendAccountActivatedEmailInputSchema,
+  SendAccountInvitationEmailInput,
+  sendAccountInvitationEmailInputSchema,
   SendEmailVerificationEmailInput,
   sendEmailVerificationEmailSchema,
   SendPasswordChangedEmailInput,
@@ -62,6 +70,14 @@ export class EmailConsumer extends WorkerHost {
       case JOB_PATTERNS.SEND_TWO_FACTOR_DISABLED_EMAIL:
         return this.sendTwoFactorDisabledEmail(
           job as Job<SendTwoFactorDisabledEmailInput>,
+        );
+      case JOB_PATTERNS.SEND_ACCOUNT_INVITATION_EMAIL:
+        return this.sendAccountInvitationEmail(
+          job as Job<SendAccountInvitationEmailInput>,
+        );
+      case JOB_PATTERNS.SEND_ACCOUNT_ACTIVATED_EMAIL:
+        return this.sendAccountActivatedEmail(
+          job as Job<SendAccountActivatedEmailInput>,
         );
       default:
         this.logger.warn(`No handler for job ${job.id} with name ${job.name}`);
@@ -146,6 +162,31 @@ export class EmailConsumer extends WorkerHost {
       to: [{ email: validated.email }],
       subject: 'Two-factor authentication disabled',
       text: 'Two-factor authentication has been successfully disabled on your account.',
+    });
+  }
+
+  // The job data holds a live invitation link, so it is never logged.
+  private async sendAccountInvitationEmail(
+    job: Job<SendAccountInvitationEmailInput>,
+  ) {
+    this.logger.log(`Processing job ${job.id} (account invitation)`);
+    const validated = z.parse(sendAccountInvitationEmailInputSchema, job.data);
+    await this.mailService.send({
+      to: [{ email: validated.email }],
+      ...renderAccountInvitationEmail({
+        invitationLink: validated.invitationLink,
+      }),
+    });
+  }
+
+  private async sendAccountActivatedEmail(
+    job: Job<SendAccountActivatedEmailInput>,
+  ) {
+    this.logger.log(`Processing job ${job.id} (account activated)`);
+    const validated = z.parse(sendAccountActivatedEmailInputSchema, job.data);
+    await this.mailService.send({
+      to: [{ email: validated.email }],
+      ...renderAccountActivatedEmail(),
     });
   }
 

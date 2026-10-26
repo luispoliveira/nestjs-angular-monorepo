@@ -54,7 +54,7 @@ In `MetricsAuthGuard`, when there is no token, return `NODE_ENV !== 'production'
 - **`sendResetPassword`:** looks up a `credential` account for the user. With none, it emits `USER_INVITED` carrying `invitationLink`. With one, it emits `USER_PASSWORD_RESET_REQUESTED` as today.
 - **`onPasswordReset`:** the user object it receives is the row loaded *before* the reset. When `!user.emailVerified`, it sets `emailVerified = true` and emits `USER_ACCOUNT_ACTIVATED` instead of `USER_PASSWORD_CHANGED`.
 - **Activation trigger:** activation is detected in `onPasswordReset`, not `afterEmailVerification`, because the latter also fires when a user changes their email.
-- **New constants:** `EVENT_PATTERNS.USER_INVITED` and `USER_ACCOUNT_ACTIVATED`; `JOB_PATTERNS.SEND_ACCOUNT_INVITATION_EMAIL` and `SEND_ACCOUNT_ACTIVATED_EMAIL`. Zod payload schemas for both go in `packages/shared-types`.
+- **New constants:** `EVENT_PATTERNS.USER_INVITED` and `USER_ACCOUNT_ACTIVATED`; `JOB_PATTERNS.SEND_ACCOUNT_INVITATION_EMAIL` and `SEND_ACCOUNT_ACTIVATED_EMAIL`. Zod payload schemas for both go beside the existing ones in `packages/shared/src/{publishers,queue}/input/` (that is where this template keeps event and job inputs).
 - **Bull Board:** `redactJobData` also redacts `invitationLink`.
 - **Templates:** `packages/mail/src/templates/account-emails.ts` is a minimal version of the CRM's `layout` + `escapeHtml`, with neutral colours and only `paragraph` and `button` blocks. It renders `{ subject, html, text }` for the invitation and activation emails only.
 - **Refused `@AfterHook`s:** add a small `isRefused(ctx)` check (`ctx.context?.returned instanceof Error`) at the top of every notifying `@AfterHook` in `LocalAuthService`, so one fix covers every caller.

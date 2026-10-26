@@ -73,6 +73,17 @@ export class LocalAuthService implements OnModuleInit {
    * back to `ctx.context.session`, the session that authorized this request
    * in the first place, when no rotation happened.
    */
+  /**
+   * better-auth runs after hooks for failed requests too (`ctx.context.returned`
+   * is then the `APIError`). A notice must only go out when the change actually
+   * happened, and a throw from an after hook would replace the real response —
+   * so every notifying hook returns early on a refused request. Detected by
+   * shape (`instanceof Error`) so unit tests need not load ESM better-auth.
+   */
+  private isRefused(ctx: nestjsBetterAuth.AuthHookContext): boolean {
+    return ctx.context?.returned instanceof Error;
+  }
+
   private currentUser(ctx: nestjsBetterAuth.AuthHookContext) {
     const session = ctx.context.newSession ?? ctx.context.session;
     if (!session?.user) {
@@ -83,6 +94,7 @@ export class LocalAuthService implements OnModuleInit {
 
   @nestjsBetterAuth.AfterHook('/change-password')
   handlePasswordChanged(ctx: nestjsBetterAuth.AuthHookContext) {
+    if (this.isRefused(ctx)) return;
     const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserPasswordChanged({
@@ -94,6 +106,7 @@ export class LocalAuthService implements OnModuleInit {
 
   @nestjsBetterAuth.AfterHook('/two-factor/enable')
   handleTwoFactorEnabled(ctx: nestjsBetterAuth.AuthHookContext) {
+    if (this.isRefused(ctx)) return;
     const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserTwoFactorEnabled({
@@ -104,6 +117,7 @@ export class LocalAuthService implements OnModuleInit {
 
   @nestjsBetterAuth.AfterHook('/two-factor/disable')
   handleTwoFactorDisabled(ctx: nestjsBetterAuth.AuthHookContext) {
+    if (this.isRefused(ctx)) return;
     const user = this.currentUser(ctx);
 
     this.notificationsPublisher.emitUserTwoFactorDisabled({
@@ -121,6 +135,7 @@ export class LocalAuthService implements OnModuleInit {
    */
   @nestjsBetterAuth.AfterHook('/admin/set-user-password')
   async handleAdminSetPassword(ctx: nestjsBetterAuth.AuthHookContext) {
+    if (this.isRefused(ctx)) return;
     const { userId } = ctx.body as { userId: string; newPassword: string };
 
     const user = await this.databaseService.user.findUnique({

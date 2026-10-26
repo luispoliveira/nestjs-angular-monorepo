@@ -1,3 +1,5 @@
+export * from './send-account-activated-email.input';
+export * from './send-account-invitation-email.input';
 export * from './send-email-verification-email.input';
 export * from './send-password-changed-email.input';
 export * from './send-password-reset-email.input';

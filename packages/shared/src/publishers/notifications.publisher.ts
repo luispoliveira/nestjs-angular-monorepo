@@ -4,8 +4,10 @@ import { ClsService } from 'nestjs-cls';
 import { BasePublisher } from '../abstracts';
 import { EVENT_PATTERNS, SERVICES } from '../constants';
 import {
+  UserAccountActivatedInput,
   UserCreatedInput,
   UserEmailVerificationRequestedInput,
+  UserInvitedInput,
   UserPasswordChangedInput,
   UserPasswordResetRequestedInput,
   UserTwoFactorDisabledInput,
@@ -59,6 +61,17 @@ export class NotificationsPublisher extends BasePublisher {
   emitUserTwoFactorDisabled(data: UserTwoFactorDisabledInput) {
     this.publish<UserTwoFactorDisabledInput>(
       EVENT_PATTERNS.USER_TWO_FACTOR_DISABLED,
+      data,
+    );
+  }
+
+  emitUserInvited(data: UserInvitedInput) {
+    this.publish<UserInvitedInput>(EVENT_PATTERNS.USER_INVITED, data);
+  }
+
+  emitUserAccountActivated(data: UserAccountActivatedInput) {
+    this.publish<UserAccountActivatedInput>(
+      EVENT_PATTERNS.USER_ACCOUNT_ACTIVATED,
       data,
     );
   }

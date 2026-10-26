@@ -71,6 +71,22 @@ If a future better-auth upgrade reports a similar mismatch for a different plugi
 
 **Fix:** `BootstrapUtil`'s `enableCors` (see `packages/shared/src/utils/bootstrap.util.ts`) always calls Nest's `app.enableCors({ origin: [...] })` with an **array** (splitting the comma-joined `CORS_ORIGIN` string) — the `cors` package only pattern-matches when given a function; given an array it does a literal string comparison, so a literal `"*"` entry never equals any real browser `Origin` header and is effectively a no-op that grants nothing. better-auth's `trustedOrigins`, by contrast, treats a bare `*` as a genuine wildcard pattern (`matchesOriginPattern`) that trusts **every** origin. `apps/auth/src/app.module.ts` filters `*` out of the list before it reaches `trustedOrigins` for exactly this reason — do not "simplify" that filter on the assumption the two behave the same.
 
+### `admin.createUser` sends no verification email — invitations go through `requestPasswordReset`
+
+better-auth's `/admin/create-user` creates the user with `emailVerified: false` and, when no `password` is passed, **no credential account**, and it never calls `sendVerificationEmail`. Under `requireEmailVerification: true` such an account cannot sign in until something verifies it. The invitation is `auth.api.requestPasswordReset({ body: { email, redirectTo } })` from `databaseHooks.user.create.after`, gated on `context?.path === '/admin/create-user'`: `resetPassword` _creates_ the credential account when none exists, and `sendResetPassword` tells an invitation from a reset by whether that credential account exists. The hook can find the user because `databaseHooks.*.after` run after the creating transaction commits. `auth` must be bound to a `const` before the options object closes over it (see `apps/auth/src/app.module.ts`). `redirectTo` is origin-checked only for requests that come through HTTP; a server-side `auth.api` call has no request, so the check is skipped.
+
+### `onPasswordReset` receives the user as loaded _before_ the reset
+
+`resetPassword` loads the user, writes the new password, then calls `onPasswordReset({ user })` with that earlier row — and never touches `emailVerified`. So `user.emailVerified === false` inside the hook means "this password set is the account's activation"; the hook marks the email verified itself (following the emailed link proves ownership of the address). Don't key activation on `afterEmailVerification`: it also fires at the end of an email _change_.
+
+### `@AfterHook` handlers also run for refused requests
+
+`@thallesp/nestjs-better-auth`'s `@AfterHook('/change-password')` fires even when better-auth refused the change (wrong current password), and the caller's session is still valid, so a "password changed" email would go out for a password that did not change. `LocalAuthService.isRefused(ctx)` (`ctx.context.returned instanceof Error`) makes every notifying hook return early. Detect by `instanceof Error`, not by importing better-auth's `APIError` (ESM-only, which the CommonJS unit suite cannot load). A hook must also never _throw_ on a refused request: an `APIError` thrown from an after hook replaces the real response.
+
+### `apps/auth` e2e suites must run in band
+
+Every auth e2e file calls `truncateDatabase` in `afterAll` against the one Testcontainers Postgres. Run in parallel, the first file to finish wipes the other's users and sessions mid-run and its authenticated requests start failing with 401. `test:e2e` passes `--runInBand`.
+
 ### The global throttler does not cover `/api/auth/*` — better-auth limits itself
 
 `SharedModule` registers `ThrottlerModule` but no global `APP_GUARD` for it, so Nest rate limiting is opt-in per route via `@RateLimit()`. better-auth serves `/api/auth/*` with its own handler, outside the Nest guard pipeline, so `@RateLimit()` can never reach sign-in. better-auth's own limiter is production-only and in-memory by default (per worker), which left dev with no login throttle at all. `apps/auth` therefore sets `betterAuth({ rateLimit })` explicitly: enabled everywhere but `test` (the e2e suites hammer sign-in), strict `customRules` on `/sign-in/email`, `/sign-up/email`, `/two-factor/verify-*`, `/request-password-reset`, `/reset-password`, backed by a shared-Redis `customStorage` (`rate-limit.storage.ts`: atomic Lua `INCR`+`EXPIRE`, fails open if Redis is down). In better-auth 1.7.6 a refused request is a `429` carrying `X-Retry-After` (not `Retry-After`), and `/forget-password` no longer exists — only `/request-password-reset`.

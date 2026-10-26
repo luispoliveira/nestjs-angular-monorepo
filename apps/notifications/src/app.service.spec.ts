@@ -27,6 +27,8 @@ describe('AppService', () => {
       sendPasswordChangedEmail: jest.fn().mockResolvedValue(undefined),
       sendTwoFactorEnabledEmail: jest.fn().mockResolvedValue(undefined),
       sendTwoFactorDisabledEmail: jest.fn().mockResolvedValue(undefined),
+      sendAccountInvitationEmail: jest.fn().mockResolvedValue(undefined),
+      sendAccountActivatedEmail: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<EmailProducer>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -158,6 +160,30 @@ describe('AppService', () => {
       expect(producer.sendTwoFactorDisabledEmail).toHaveBeenCalledTimes(1);
       expect(producer.sendTwoFactorDisabledEmail).toHaveBeenCalledWith({
         email,
+      });
+    });
+  });
+
+  describe('sendAccountInvitationNotification()', () => {
+    it('should call producer.sendAccountInvitationEmail with email and link', async () => {
+      await service.sendAccountInvitationNotification(
+        'user@example.com',
+        'https://app.test/reset-password?token=t',
+      );
+
+      expect(producer.sendAccountInvitationEmail).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        invitationLink: 'https://app.test/reset-password?token=t',
+      });
+    });
+  });
+
+  describe('sendAccountActivatedNotification()', () => {
+    it('should call producer.sendAccountActivatedEmail with the email', async () => {
+      await service.sendAccountActivatedNotification('user@example.com');
+
+      expect(producer.sendAccountActivatedEmail).toHaveBeenCalledWith({
+        email: 'user@example.com',
       });
     });
   });

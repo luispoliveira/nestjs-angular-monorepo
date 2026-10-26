@@ -234,16 +234,20 @@ The `auth` service also exposes a `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` RPC endpo
 
 ### Email Notification Pipeline
 
-All six better-auth lifecycle events trigger email notifications:
+All eight better-auth lifecycle events trigger email notifications:
 
 | Event                               | Email Sent                    |
 | ----------------------------------- | ----------------------------- |
-| `USER_CREATED`                      | Welcome email                 |
+| `USER_CREATED`                      | Welcome email (self sign-up)  |
+| `USER_INVITED`                      | Invitation to set a password (account created by an admin) |
+| `USER_ACCOUNT_ACTIVATED`            | Account activated (first password set) |
 | `USER_PASSWORD_RESET_REQUESTED`     | Password reset                |
 | `USER_PASSWORD_CHANGED`             | Password changed confirmation |
 | `USER_EMAIL_VERIFICATION_REQUESTED` | Email verification            |
 | `USER_TWO_FACTOR_ENABLED`           | 2FA enabled confirmation      |
 | `USER_TWO_FACTOR_DISABLED`          | 2FA disabled confirmation     |
+
+An administrator never sees or sets a new user's password: creating a user emails them an invitation (a single-use `/reset-password` link, valid one hour) and setting the first password activates the account. A reset requested for an account that never set a password re-sends the invitation.
 
 ## Environment Variables
 
@@ -392,9 +396,9 @@ import {
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SERVICES`         | `AUTH`, `NOTIFICATIONS`                                                                                                                                                              |
 | `QUEUES`           | `EMAIL: 'email-queue'`, `EMAIL_DLQ: 'email-queue-dlq'`                                                                                                                               |
-| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`                 |
+| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`, `USER_INVITED`, `USER_ACCOUNT_ACTIVATED`                 |
 | `MESSAGE_PATTERNS` | `AUTH_AUTHENTICATE`                                                                                                                                                                  |
-| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL` |
+| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL`, `SEND_ACCOUNT_INVITATION_EMAIL`, `SEND_ACCOUNT_ACTIVATED_EMAIL` |
 
 ### `@repo/database`
 

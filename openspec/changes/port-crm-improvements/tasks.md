@@ -24,20 +24,20 @@
 
 ## 3. Account invitation
 
-- [ ] 3.1 test: apps/auth: extend `local-auth.service.spec.ts` so the change-password, set-password and 2FA enable/disable after-hooks emit nothing when `ctx.context.returned` is an `Error`. Verify it fails.
-- [ ] 3.2 fix: apps/auth: add the `isRefused(ctx)` guard to every notifying `@AfterHook` (D6). Verify the spec passes.
-- [ ] 3.3 test: packages/shared-types + packages/shared: add schema specs for the invitation and activation payloads, and publisher specs for `emitUserInvited`/`emitUserAccountActivated`. Verify they fail.
-- [ ] 3.4 feat: packages/shared-types + packages/shared: add `USER_INVITED`, `USER_ACCOUNT_ACTIVATED`, `SEND_ACCOUNT_INVITATION_EMAIL` and `SEND_ACCOUNT_ACTIVATED_EMAIL`, the schemas, publisher methods and producer methods. Add `invitationLink` to `redactJobData`. Verify the specs pass and `redact-job-data` redacts `invitationLink`.
-- [ ] 3.5 test: packages/mail: specs for `account-emails.ts`: subject, html and text for the invitation and activation emails, the link present in full in the text body, HTML escaping, and no password. Verify they fail.
-- [ ] 3.6 feat: packages/mail: add the minimal `account-emails.ts` templates (D6). Verify the specs pass.
-- [ ] 3.7 test: apps/notifications + apps/worker: specs for the event handlers enqueuing the new jobs, and for `EmailConsumer` sending each rendered email. Verify they fail.
-- [ ] 3.8 feat: apps/notifications + apps/worker: add the handlers and the consumer branches. Verify the specs pass.
-- [ ] 3.9 test: apps/auth: port `account-emails.e2e-spec.ts`. Cover: admin create gives one invitation and no welcome email; the seeded admin and social sign-in get no invitation; set password gives verified, activated and sign-in works; a reset for a never-activated account re-sends the invitation; an unknown email sends nothing. Verify it fails.
-- [ ] 3.10 feat: apps/auth: bind `auth` to a `const`; in the `user.create.after` hook, request a reset on `/admin/create-user` and skip `USER_CREATED`; branch `sendResetPassword` on the credential account; mark the account verified and activated in `onPasswordReset` (D6). Make `test:e2e` run with `--runInBand`. Verify `pnpm --filter auth test:e2e` passes.
-- [ ] 3.11 test: apps/web: update `create-user-dialog.spec.ts`: `createUser` is called without a password, no reveal step, success message says invitation sent. Verify it fails.
-- [ ] 3.12 feat(web)!: apps/web: remove the password generator and reveal step from `create-user-dialog`. Verify the spec passes and `pnpm --filter web build` succeeds.
-- [ ] 3.13 docs: .claude/README: corner cases for `admin.createUser` sending no email, `onPasswordReset` seeing the pre-reset user, and `@AfterHook` running on refused requests. Update the README auth section. Verify the entries exist.
-- [ ] 3.14 chore: commit group 3 with `/commit`, using a `BREAKING CHANGE:` footer for the web dialog. Verify the gate passes.
+- [x] 3.1 test: apps/auth: extend `local-auth.service.spec.ts` so the change-password, set-password and 2FA enable/disable after-hooks emit nothing when `ctx.context.returned` is an `Error`. Verify it fails.
+- [x] 3.2 fix: apps/auth: add the `isRefused(ctx)` guard to every notifying `@AfterHook` (D6). Verify the spec passes.
+- [x] 3.3 test: packages/shared: add schema specs for the invitation and activation payloads, and publisher specs for `emitUserInvited`/`emitUserAccountActivated`. Verify they fail.
+- [x] 3.4 feat: packages/shared: add `USER_INVITED`, `USER_ACCOUNT_ACTIVATED`, `SEND_ACCOUNT_INVITATION_EMAIL` and `SEND_ACCOUNT_ACTIVATED_EMAIL`, the schemas, publisher methods and producer methods. Add `invitationLink` to `redactJobData`. Verify the specs pass and `redact-job-data` redacts `invitationLink`.
+- [x] 3.5 test: packages/mail: specs for `account-emails.ts`: subject, html and text for the invitation and activation emails, the link present in full in the text body, HTML escaping, and no password. Verify they fail.
+- [x] 3.6 feat: packages/mail: add the minimal `account-emails.ts` templates (D6). Verify the specs pass.
+- [x] 3.7 test: apps/notifications + apps/worker: specs for the event handlers enqueuing the new jobs, and for `EmailConsumer` sending each rendered email. Verify they fail.
+- [x] 3.8 feat: apps/notifications + apps/worker: add the handlers and the consumer branches. Verify the specs pass.
+- [x] 3.9 test: apps/auth: port `account-emails.e2e-spec.ts`. Cover: admin create gives one invitation and no welcome email; the seeded admin and social sign-in get no invitation; set password gives verified, activated and sign-in works; a reset for a never-activated account re-sends the invitation; an unknown email sends nothing. Verify it fails.
+- [x] 3.10 feat: apps/auth: bind `auth` to a `const`; in the `user.create.after` hook, request a reset on `/admin/create-user` and skip `USER_CREATED`; branch `sendResetPassword` on the credential account; mark the account verified and activated in `onPasswordReset` (D6). Make `test:e2e` run with `--runInBand`. Verify `pnpm --filter auth test:e2e` passes.
+- [x] 3.11 test: apps/web: update `create-user-dialog.spec.ts`: `createUser` is called without a password, no reveal step, success message says invitation sent. Verify it fails.
+- [x] 3.12 feat(web)!: apps/web: remove the password generator and reveal step from `create-user-dialog`. Verify the spec passes and `pnpm --filter web build` succeeds.
+- [x] 3.13 docs: .claude/README: corner cases for `admin.createUser` sending no email, `onPasswordReset` seeing the pre-reset user, and `@AfterHook` running on refused requests. Update the README auth section. Verify the entries exist.
+- [x] 3.14 chore: commit group 3 with `/commit`, using a `BREAKING CHANGE:` footer for the web dialog. Verify the gate passes.
 
 ## 4. PWA
 

@@ -5,6 +5,8 @@ import { ClsService } from 'nestjs-cls';
 import { BaseProducer } from '../../abstracts';
 import { JOB_PATTERNS, QUEUES } from '../../constants';
 import {
+  SendAccountActivatedEmailInput,
+  SendAccountInvitationEmailInput,
   SendEmailVerificationEmailInput,
   SendPasswordChangedEmailInput,
   SendPasswordResetEmailInput,
@@ -68,5 +70,20 @@ export class EmailProducer extends BaseProducer {
     return this.addJob(JOB_PATTERNS.SEND_TWO_FACTOR_DISABLED_EMAIL, {
       email,
     });
+  }
+
+  sendAccountInvitationEmail(payload: SendAccountInvitationEmailInput) {
+    const { email, invitationLink } = payload;
+
+    return this.addJob(JOB_PATTERNS.SEND_ACCOUNT_INVITATION_EMAIL, {
+      email,
+      invitationLink,
+    });
+  }
+
+  sendAccountActivatedEmail(payload: SendAccountActivatedEmailInput) {
+    const { email } = payload;
+
+    return this.addJob(JOB_PATTERNS.SEND_ACCOUNT_ACTIVATED_EMAIL, { email });
   }
 }

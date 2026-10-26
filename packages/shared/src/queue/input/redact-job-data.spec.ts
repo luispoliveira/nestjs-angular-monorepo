@@ -57,6 +57,15 @@ describe('redactJobData', () => {
     });
   });
 
+  it('replaces the account invitation link too', () => {
+    expect(
+      redactJobData({
+        email: 'user@example.com',
+        invitationLink: 'https://app.test/reset-password?token=secret',
+      }),
+    ).toEqual({ email: 'user@example.com', invitationLink: '[redacted]' });
+  });
+
   it('does not mutate the stored job data', () => {
     const data = { email: 'user@example.com', resetLink: 'https://x.test/t' };
 

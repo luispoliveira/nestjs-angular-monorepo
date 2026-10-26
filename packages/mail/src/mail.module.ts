@@ -1,10 +1,4 @@
-import {
-  DynamicModule,
-  Module,
-  NotImplementedException,
-  Provider,
-  Type,
-} from '@nestjs/common';
+import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
 import { MongoModule } from '@repo/shared';
 import {
   MailModuleAsyncOptions,
@@ -14,6 +8,7 @@ import {
 import { MailProvider } from './interfaces/provider.interface';
 import { MailService } from './mail.service';
 import { BrevoProvider } from './providers/brevo.provider';
+import { ResendProvider } from './providers/resend.provider';
 
 @Module({
   imports: [MongoModule],
@@ -22,51 +17,50 @@ import { BrevoProvider } from './providers/brevo.provider';
 })
 export class MailModule {
   static forRoot(options: MailModuleOptions): DynamicModule {
-    const mailProvider = this.createMailProvider(options.provider);
-
     return {
       module: MailModule,
       providers: [
-        mailProvider,
         {
           provide: 'MAIL_MODULE_OPTIONS',
           useValue: options,
         },
+        this.mailProvider,
       ],
     };
   }
 
   static forRootAsync(options: MailModuleAsyncOptions): DynamicModule {
-    const mailProvider = this.createMailProvider(options.provider);
-    const asyncProviders = this.createAsyncProviders(options);
-
     return {
       module: MailModule,
       imports: options.imports,
-      providers: [...asyncProviders, mailProvider],
+      providers: [...this.createAsyncProviders(options), this.mailProvider],
     };
   }
 
-  private static createMailProvider(provider: 'brevo' | 'sendgrid'): Provider {
-    let providerClass: Type<MailProvider>;
-
-    switch (provider) {
+  /**
+   * Resolved from the options rather than at module definition, so the
+   * provider can come from validated config (`MAIL_PROVIDER`) instead of
+   * being fixed before `ConfigService` exists.
+   */
+  static createMailProvider(options: MailModuleOptions): MailProvider {
+    switch (options.provider) {
+      case 'resend':
+        return new ResendProvider(options);
       case 'brevo':
-        providerClass = BrevoProvider;
-        break;
-      case 'sendgrid':
-        throw new NotImplementedException(
-          'SendGrid provider is not implemented yet.',
-        );
+        return new BrevoProvider(options);
       default:
-        throw new Error('Invalid mail provider specified.');
+        throw new Error(
+          `Invalid mail provider: ${String(options.provider as unknown)}`,
+        );
     }
-
-    return {
-      provide: 'MailProvider',
-      useClass: providerClass,
-    };
   }
+
+  private static readonly mailProvider: Provider = {
+    provide: 'MailProvider',
+    useFactory: (options: MailModuleOptions) =>
+      MailModule.createMailProvider(options),
+    inject: ['MAIL_MODULE_OPTIONS'],
+  };
 
   private static createAsyncProviders(
     options: MailModuleAsyncOptions,
@@ -91,27 +85,16 @@ export class MailModule {
     if (options.useFactory) {
       return {
         provide: 'MAIL_MODULE_OPTIONS',
-        useFactory: async (...args: unknown[]) => {
-          if (!options.useFactory) {
-            throw new Error('useFactory is not defined');
-          }
-
-          const config = await options.useFactory(...args);
-          return { ...config, provider: options.provider };
-        },
+        useFactory: options.useFactory,
         inject: options.inject || [],
       };
     }
 
-    const inject = [options.useClass as Type<MailOptionsFactory>];
-
     return {
       provide: 'MAIL_MODULE_OPTIONS',
-      useFactory: async (optionsFactory: MailOptionsFactory) => {
-        const config = await optionsFactory.createMailOptions();
-        return { ...config, provider: options.provider };
-      },
-      inject,
+      useFactory: (optionsFactory: MailOptionsFactory) =>
+        optionsFactory.createMailOptions(),
+      inject: [options.useClass as Type<MailOptionsFactory>],
     };
   }
 }

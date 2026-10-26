@@ -21,13 +21,16 @@ export interface Mail {
   bcc?: MailRecipient[];
   subject?: string;
   text?: string;
+  html?: string;
   templateId?: string;
   data?: Record<string, unknown>;
   attachments?: MailAttachment[];
 }
 
+export type MailProviderName = 'brevo' | 'resend';
+
 export interface MailModuleOptions {
-  provider: 'brevo' | 'sendgrid';
+  provider: MailProviderName;
   apiKey: string;
   fromEmail: string;
   fromName?: string;
@@ -35,23 +38,18 @@ export interface MailModuleOptions {
 }
 
 export interface MailOptionsFactory {
-  createMailOptions():
-    | Promise<Omit<MailModuleOptions, 'provider'>>
-    | Omit<MailModuleOptions, 'provider'>;
+  createMailOptions(): Promise<MailModuleOptions> | MailModuleOptions;
 }
 
 export interface MailModuleAsyncOptions extends Pick<
   ModuleMetadata,
   'imports'
 > {
-  provider: 'brevo' | 'sendgrid';
   useExisting?: Type<MailOptionsFactory>;
   useClass?: Type<MailOptionsFactory>;
   useFactory?: (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
-  ) =>
-    | Promise<Omit<MailModuleOptions, 'provider'>>
-    | Omit<MailModuleOptions, 'provider'>;
+  ) => Promise<MailModuleOptions> | MailModuleOptions;
   inject?: Array<InjectionToken | OptionalFactoryDependency>;
 }

@@ -200,7 +200,10 @@ CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
+# brevo (por omissão) ou resend; só a key do provider ativo é obrigatória
+MAIL_PROVIDER=brevo
 BREVO_API_KEY=<API key do Brevo>
+# RESEND_API_KEY=<API key do Resend>
 FROM_EMAIL=noreply@<dominio-frontend>
 FROM_NAME=<Nome da App>
 DEV_EMAIL=
@@ -396,7 +399,7 @@ pm2 reload all
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth`
-- [ ] `BREVO_API_KEY` válida em `apps/worker`
+- [ ] `BREVO_API_KEY` (ou `RESEND_API_KEY` se `MAIL_PROVIDER=resend`) válida em `apps/worker`
 - [ ] `pnpm build` executado com sucesso
 - [ ] `pnpm db:migrate` executado
 - [ ] `pnpm db:seed` executado

@@ -25,7 +25,8 @@
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",
     "@repo/shared": "workspace:*",
-    "@repo/shared-types": "workspace:*"
+    "@repo/shared-types": "workspace:*",
+    "resend": "^6.34.1"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.28",

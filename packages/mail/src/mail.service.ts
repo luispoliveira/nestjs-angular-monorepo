@@ -39,7 +39,9 @@ export class MailService {
         return this.sendWithRetry(mail, retries - 1, attempt + 1);
       } else {
         this.logger.error('All attempts to send email failed.');
-        throw new Error('Failed to send email after multiple attempts.');
+        throw new Error(
+          `Failed to send email after multiple attempts: ${errorMessage}`,
+        );
       }
     }
   }

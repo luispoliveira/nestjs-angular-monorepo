@@ -11,16 +11,16 @@
 - [x] 1.7 test: apps/auth: port `rate-limit.storage.spec.ts`: within the limit, over the limit with `retryAfter`, TTL set only on the first hit, fail open on a Redis error. Verify it fails.
 - [x] 1.8 feat: apps/auth: add `rate-limit.storage.ts` and the better-auth `rateLimit` config with `customRules`, disabled when `NODE_ENV=test` (D1). Verify the storage spec passes, then run `pnpm dev` and confirm the 11th `/sign-in/email` within a minute returns 429 with `X-Retry-After`.
 - [x] 1.9 docs: .claude: add corner cases for "the global throttler does not cover `/api/auth/*`" and the cold-start seeder retry. Note in DEPLOY.md that `METRICS_TOKEN` is required in production. Verify both files mention them.
-- [ ] 1.10 chore: commit group 1 with `/commit`. Verify build, lint, check-types and tests pass in the gate.
+- [x] 1.10 chore: commit group 1 with `/commit`. Verify build, lint, check-types and tests pass in the gate.
 
 ## 2. Mail: Resend provider and HTML body
 
-- [ ] 2.1 test: packages/mail: port `resend.provider.spec.ts` (sender format, html/text/cc/bcc/attachments mapping, throws on an `{ error }` result). Extend `brevo.provider.spec.ts` (sends `htmlContent`) and `mail.service.spec.ts` (provider chosen from options, unknown provider throws). Verify they fail.
-- [ ] 2.2 feat: packages/mail: add `html` to `Mail`, add `ResendProvider`, map `htmlContent` in Brevo, and resolve the provider by factory from `MAIL_MODULE_OPTIONS` (`'brevo' | 'resend'`, sendgrid stub removed). Add the `resend` dependency (D5). Verify `pnpm --filter @repo/mail test` passes.
-- [ ] 2.3 test: apps/worker: extend `env.spec.ts`: `MAIL_PROVIDER` defaults to brevo, rejects unknown values, and requires only the active provider's key. Verify it fails.
-- [ ] 2.4 feat: apps/worker: add `MAIL_PROVIDER`, `RESEND_API_KEY` and the conditional key requirement to `env.ts`, and pass the provider into `MailModule.forRootAsync`. Verify the env spec passes and the worker boots with `MAIL_PROVIDER=resend` and no Brevo key.
-- [ ] 2.5 docs: update `.env.example`, `apps/worker/.env.example`, DEPLOY.md and README with `MAIL_PROVIDER`/`RESEND_API_KEY`. Verify the documented variables match `env.ts`.
-- [ ] 2.6 chore: commit group 2 with `/commit`. Verify the gate passes.
+- [x] 2.1 test: packages/mail: port `resend.provider.spec.ts` (sender format, html/text/cc/bcc/attachments mapping, throws on an `{ error }` result). Extend `brevo.provider.spec.ts` (sends `htmlContent`) and `mail.service.spec.ts` (provider chosen from options, unknown provider throws). Verify they fail.
+- [x] 2.2 feat: packages/mail: add `html` to `Mail`, add `ResendProvider`, map `htmlContent` in Brevo, and resolve the provider by factory from `MAIL_MODULE_OPTIONS` (`'brevo' | 'resend'`, sendgrid stub removed). Add the `resend` dependency (D5). Verify `pnpm --filter @repo/mail test` passes.
+- [x] 2.3 test: apps/worker: extend `env.spec.ts`: `MAIL_PROVIDER` defaults to brevo, rejects unknown values, and requires only the active provider's key. Verify it fails.
+- [x] 2.4 feat: apps/worker: add `MAIL_PROVIDER`, `RESEND_API_KEY` and the conditional key requirement to `env.ts`, and pass the provider into `MailModule.forRootAsync`. Verify the env spec passes and the worker boots with `MAIL_PROVIDER=resend` and no Brevo key.
+- [x] 2.5 docs: update `.env.example`, `apps/worker/.env.example`, DEPLOY.md and README with `MAIL_PROVIDER`/`RESEND_API_KEY`. Verify the documented variables match `env.ts`.
+- [x] 2.6 chore: commit group 2 with `/commit`. Verify the gate passes.
 
 ## 3. Account invitation
 

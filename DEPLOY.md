@@ -178,7 +178,9 @@ Criar um ficheiro `.env.production` para cada app. Em produção, o Docker deve 
 | `MONGO_URI`      | `mongodb://app_db:<MONGO_PASS>@mongo:27017/app_db?authSource=admin` | ✅          |                                                           |
 | `CORS_ORIGIN`    | `https://<dominio-frontend>`                                          | ✅          |                                                           |
 | `ENCRYPTION_KEY` | `<mesmo valor que apps/auth>`                                         | ✅          |                                                           |
-| `BREVO_API_KEY`  | `<API key do Brevo>`                                                  | ✅          | Obter em app.brevo.com → API Keys                         |
+| `MAIL_PROVIDER`  | `brevo` \| `resend`                                                   | ⚠️ opcional | Por omissão `brevo`. Valor inválido impede o arranque     |
+| `BREVO_API_KEY`  | `<API key do Brevo>`                                                  | ✅ se `brevo` | Obter em app.brevo.com → API Keys                       |
+| `RESEND_API_KEY` | `<API key do Resend>`                                                 | ✅ se `resend` | Obter em resend.com → API Keys; o domínio do `FROM_EMAIL` tem de estar verificado |
 | `FROM_EMAIL`     | `noreply@<dominio-frontend>`                                                   | ✅          | Endereço de email remetente                               |
 | `FROM_NAME`      | `<Nome da App>`                                                       | ✅          | Nome do remetente nos emails                              |
 | `DEV_EMAIL`      | `<email da equipa>`                                                   | ⚠️ opcional | Em produção pode ficar em branco ou igual ao `FROM_EMAIL` |
@@ -386,7 +388,7 @@ Configurar em `apps/auth`: `BETTER_AUTH_URL=https://<dominio-auth>/api/auth`, `C
 - [ ] `METRICS_TOKEN` definido em todos os serviços NestJS (sem ele `/api/metrics` fica fechado em produção)
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth` com URL pública HTTPS do frontend
-- [ ] `BREVO_API_KEY` válida em `apps/worker`
+- [ ] `BREVO_API_KEY` (ou `RESEND_API_KEY` se `MAIL_PROVIDER=resend`) válida em `apps/worker`
 - [ ] Infraestrutura iniciada e healthchecks a passar
 - [ ] Migrações corridas (`pnpm db:migrate`)
 - [ ] Seed executado (`pnpm db:seed`)

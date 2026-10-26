@@ -46,6 +46,19 @@ describe('BrevoProvider', () => {
     );
   });
 
+  it('should send the html body as htmlContent alongside the text body', async () => {
+    await provider.send({
+      to: [{ email: 'user@test.com' }],
+      subject: 'Hello',
+      html: '<p>Hi</p>',
+      text: 'Hi',
+    });
+
+    expect(mockSendTransacEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ htmlContent: '<p>Hi</p>', textContent: 'Hi' }),
+    );
+  });
+
   it('should include cc and bcc when provided', async () => {
     const mail: Mail = {
       to: [{ email: 'to@test.com' }],

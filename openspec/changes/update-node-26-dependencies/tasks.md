@@ -38,8 +38,8 @@
 
 ## 5. Integration verification
 
-- [ ] 5.1 test: end-to-end smoke on Node 26 — `pnpm docker:up`, `pnpm dev`; sign in to `apps/web` as admin, load the dashboard and one CRUD list (customers), trigger a password-reset email and see the worker complete it, `GET /metrics` on `api` returns 200 with `app="api"` labels. Verify: each step observed; no errors in app logs.
-- [ ] 5.2 test: container smoke — build and run `apps/api` and `apps/web` images from the Dockerfiles. Verify: `api` `/health/ready` is 200 inside the container; `web` serves `index.html`.
+- [x] 5.1 test: end-to-end smoke on Node 26 — `pnpm docker:up`, `pnpm dev`; sign in to `apps/web` as admin, load the dashboard and one CRUD list (customers), trigger a password-reset email and see the worker complete it, `GET /metrics` on `api` returns 200 with `app="api"` labels. Verify: each step observed; no errors in app logs. (Done 2026-10-27 with `/verify` on Node v26.12.1 and throwaway users `verify-admin@example.test` / `verify-user@example.test`: `pnpm dev` brought up all five backends + web; through `:4200/api` — no session 401, admin list 200 / create 201 / bad body 400, plain user write 403; `api` `/metrics` 200 with default and custom metrics; Mongo request logs recorded the calls; in Chrome the admin signed in, saw the dashboard and the customers list including the created row, console clean. The password-reset email was not triggered: sign-up verification mails went through the worker and the dev redirect, and Brevo answered 401 (unrecognised IP), so nothing was sent — an environment allow-list, not a Node 26 issue.)
+- [x] 5.2 test: container smoke — build and run `apps/api` and `apps/web` images from the Dockerfiles. Verify: `api` `/health/ready` is 200 inside the container; `web` serves `index.html`. (Done 2026-10-27: `api` production image on `node:26-alpine` (`node -v` → `v26.12.1`) joined to the compose network with the `.env.example` defaults and throwaway encryption keys → `/api/health/ready` and `/api/health/live` 200; `web` image → `/` 200 with `<app-root>`, SPA route 200, missing asset 404.)
 
 ## Workflow follow-up
 

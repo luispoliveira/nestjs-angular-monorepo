@@ -357,7 +357,7 @@ File suffix: `*.e2e-spec.ts` (picked up by `jest-e2e.json`).
 - No supported single-file filter — `ng test` always runs the whole suite;
   `-- <spec-file>` is not accepted the way Jest-backed app scripts accept it.
 - The Angular CLI requires the Node version pinned in `.nvmrc`
-  (`v24.19.0`) or newer within the same `v22`/`v24`/`v26` minor floor — run
+  (`v26.12.1`) or newer — run
   `nvm use` before `build`/`lint`/`test` if the shell's active Node is older.
 
 ---

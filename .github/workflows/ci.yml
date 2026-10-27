@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check Node version declarations
+        run: node --test scripts/node-version.test.cjs
+
       - name: Generate Prisma client
         run: pnpm db:generate
 

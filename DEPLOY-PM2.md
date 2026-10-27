@@ -7,8 +7,8 @@ Este guia cobre o deploy da plataforma diretamente no servidor usando **PM2** co
 ## Pré-requisitos no Servidor
 
 ```bash
-# Node.js 22
-node --version   # deve ser >= 22
+# Node.js 26
+node --version   # deve ser >= 26
 
 # pnpm
 npm install -g pnpm
@@ -19,6 +19,8 @@ npm install -g pm2
 # (opcional) turbo global — acelera builds repetidos
 npm install -g turbo
 ```
+
+> Ao mudar a versão do Node num servidor que já corre PM2, executar `pm2 update` para o daemon passar a usar o novo runtime antes do próximo `pm2 reload`.
 
 ---
 
@@ -394,7 +396,7 @@ pm2 reload all
 
 ## 11. Checklist de Deploy
 
-- [ ] Node.js 22, pnpm e PM2 instalados
+- [ ] Node.js 26, pnpm e PM2 instalados
 - [ ] PostgreSQL, Redis e MongoDB a correr
 - [ ] `apps/auth/.env` criado e preenchido
 - [ ] `apps/api/.env` criado e preenchido

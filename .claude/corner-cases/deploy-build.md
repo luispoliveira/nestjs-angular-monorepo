@@ -38,6 +38,12 @@ See `openspec/changes/update-monorepo-dependencies/design.md` (D5) for the full 
 
 **Also:** the root `update-packages` script runs `npx npm-check-updates --workspaces --root -u`, so it rewrites the root manifest **and** every `apps/*` / `packages/*` manifest (all read the same `.ncurc.json`). A bare `ncu -u` only touches the root `package.json` — don't drop the flags.
 
+## `node:25+` images ship without `corepack` — `RUN corepack enable` exits 127
+
+**Symptom:** `docker build` of any `apps/*/Dockerfile` on `node:26-alpine` fails at `RUN corepack enable` with `exit code: 127` (command not found). Node 25 removed corepack from the distribution, so it is no longer on the image's `PATH`.
+
+**Fix:** each Dockerfile runs `RUN npm install -g corepack@0.36.0 && corepack enable`, which keeps the root `package.json` `packageManager` as the single source of the pnpm version. The same builds also needed `COPY patches ./patches` (the `nestjs-zod` `patchedDependencies` file) and `packages/testing-utils/package.json` in the manifest list; the stale `packages/trpc` COPY was removed. None of these were exercised by CI, so Dockerfile rot is only caught by building an image: re-run `docker build -f apps/api/Dockerfile --target production .` and `docker build -f apps/web/Dockerfile .` after changing the Node image or the workspace layout. Verified in `update-node-26-dependencies`.
+
 ## An app that uses `createZodDto` must declare `nestjs-zod` itself — pnpm does not hoist `packages/shared`'s dependencies
 
 `apps/api` lists `nestjs-zod` as a **direct** dependency, at the same version as `packages/shared` (`^5.5.0`). With pnpm's strict layout an app does not see a package it does not declare, and two copies of `nestjs-zod` mean two `createZodDto` identities and broken Swagger registration. After bumping it, check `require.resolve('nestjs-zod')` returns the same path from the app and from `packages/shared`.

@@ -14,7 +14,7 @@ See also: [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) | [ENTRYPOINTS.md
 | `pnpm-workspace.yaml` | Declares `apps/*` and `packages/*`; pins `zod ~4.4.3` globally                                             |
 | `turbo.json`          | Turborepo pipeline: build, dev, lint, test, test:cov, test:integration, test:e2e, check-types, db:\* tasks |
 | `docker-compose.yaml` | Local infra: PostgreSQL, MongoDB, Redis, Prometheus, Grafana (per-app service defs + Traefik kept commented for future prod use) |
-| `.nvmrc`              | Node `>=22` (pinned `v24.19.0`)                                                                             |
+| `.nvmrc`              | Node `>=26` (pinned `v26.12.1`)                                                                             |
 | `docker/`             | Compose service config: `docker/prometheus/prometheus.yml` (scrape config), `docker/grafana/provisioning/` (datasource), `postgres.env`/`mongo.env` |
 | `openspec/specs/`     | Archived OpenSpec specs, one per shipped change (e.g. `angular-web-app/spec.md`, `local-observability-stack/spec.md`) |
 | `openspec/changes/archive/` | Completed OpenSpec change proposals, incl. `2026-08-26-migrate-web-to-angular` (Next.js → Angular migration) |

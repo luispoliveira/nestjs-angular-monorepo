@@ -1,11 +1,11 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Gauge } from '@prometheus-io/client';
 import { QUEUES } from '@repo/shared';
 import { Queue } from 'bullmq';
-import { Gauge } from 'prom-client';
 import { QueueMetricsService } from './queue-metrics.service';
 
-jest.mock('prom-client', () => ({
+jest.mock('@prometheus-io/client', () => ({
   Histogram: jest.fn().mockReturnValue({ observe: jest.fn() }),
   Counter: jest.fn().mockReturnValue({ inc: jest.fn() }),
   Gauge: jest.fn().mockReturnValue({ set: jest.fn() }),

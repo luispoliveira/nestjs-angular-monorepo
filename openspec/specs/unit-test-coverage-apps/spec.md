@@ -101,11 +101,11 @@ The `apps/worker` app SHALL have unit tests covering `DlqController`, `EmailDlqS
 
 #### Scenario: QueueMetricsService.recordDuration observes histogram
 - **WHEN** `QueueMetricsService.recordDuration` is called with a job name and duration in ms
-- **THEN** the prom-client histogram `observe` is called with the correct labels and duration in seconds
+- **THEN** the `@prometheus-io/client` histogram `observe` is called with the correct labels and duration in seconds
 
 #### Scenario: QueueMetricsService.recordFailure increments counter
 - **WHEN** `QueueMetricsService.recordFailure` is called with a job name
-- **THEN** the prom-client counter `inc` is called with the correct labels
+- **THEN** the `@prometheus-io/client` counter `inc` is called with the correct labels
 
 #### Scenario: EmailConsumer processes sendPasswordResetEmail job
 - **WHEN** `EmailConsumer.process()` is called with a job named `JOB_PATTERNS.SEND_PASSWORD_RESET_EMAIL`

@@ -22,9 +22,9 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.6.0",
-    "@testcontainers/postgresql": "^12.2.0",
-    "@types/node": "^26.6.3",
-    "testcontainers": "^12.2.0",
+    "@testcontainers/postgresql": "^12.2.1",
+    "@types/node": "^26.6.5",
+    "testcontainers": "^12.2.1",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {

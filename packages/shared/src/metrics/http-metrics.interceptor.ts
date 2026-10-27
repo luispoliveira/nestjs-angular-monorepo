@@ -4,7 +4,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
-import { Counter, Histogram } from 'prom-client';
+import { Counter, Histogram } from '@prometheus-io/client';
 import { Observable, tap } from 'rxjs';
 
 const httpRequestDuration = new Histogram({

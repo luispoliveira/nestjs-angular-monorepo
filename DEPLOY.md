@@ -38,7 +38,7 @@ feita pela porta, não pelo path. Os serviços comunicam entre si via Redis tran
 ## Pré-requisitos
 
 - Docker Engine ≥ 24 + Docker Compose V2
-- Node.js 22 (apenas para correr migrações localmente, se necessário)
+- Node.js 26 (apenas para correr migrações localmente, se necessário)
 - `pnpm` instalado globalmente (`npm install -g pnpm`)
 - Domínio configurado com DNS apontado para o servidor
 - Portas 80 e 443 abertas (se usar Traefik/Nginx com TLS)

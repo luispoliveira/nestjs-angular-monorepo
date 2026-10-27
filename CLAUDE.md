@@ -17,7 +17,7 @@ Guidance for Claude Code when working in this NestJS + Angular monorepo template
 - **Logging**: `nestjs-pino` + `nestjs-cls` for correlation IDs
 - **Health**: `@nestjs/terminus` (`HealthController` registered globally by `SharedModule`)
 
-Node `>=22`, pnpm `10.33.0` (see [package.json](package.json), [.nvmrc](.nvmrc)).
+Node `>=26`, pnpm `10.33.0` (see [package.json](package.json), [.nvmrc](.nvmrc)).
 
 ---
 

@@ -85,6 +85,7 @@ Adding one: write the entry in its area file (`## <the gotcha, as a claim>` + sy
 - `ngsw-worker.js` and `ngsw.json` must not be cached by the web server
 - SPA history fallback can mask a genuinely missing static asset as a 200
 - `pnpm update-packages` (`ncu -u`) will happily jump to a release candidate or an unsupported major
+- `node:25+` images ship without `corepack` — `RUN corepack enable` exits 127
 - An app that uses `createZodDto` must declare `nestjs-zod` itself — pnpm does not hoist `packages/shared`'s dependencies
 - `pnpm lint` at the root rewrites the NestJS apps' sources
 - PM2 applies an `env_<name>` block only when `--env <name>` is passed — and the shared env file must not win over `PORT`/`NODE_ENV`

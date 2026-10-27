@@ -374,8 +374,8 @@ sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```bash
 cd /opt/<app-name>
 
-# 1. Buscar código novo
-git pull origin main
+# 1. Buscar código novo (da branch em que o servidor está)
+git pull
 
 # 2. Instalar novas dependências (se houver)
 pnpm install --frozen-lockfile

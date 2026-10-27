@@ -7,7 +7,7 @@ ENV       ?= production
 # Full deploy: pull → install → build → migrate → reload
 # Usage: make deploy ENV=qa (defaults to production)
 deploy:
-	git pull origin main
+	git pull
 	pnpm install --frozen-lockfile
 	$(MAKE) build
 	$(MAKE) migrate

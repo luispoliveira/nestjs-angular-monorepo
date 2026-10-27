@@ -89,7 +89,7 @@ The application SHALL expose the current session as reactive state derived from 
 
 ### Requirement: Administrators can manage user accounts
 
-An administrator SHALL be able to list users with pagination, filter them by role and by banned status, search them by email, create a user, change a user's role, ban a user with an optional reason and an optional expiry, unban a user, and delete a user. Each operation SHALL report its outcome to the user, distinguishing success from failure.
+An administrator SHALL be able to list users with pagination, filter them by role and by banned status, search them by email, create a user, change a user's role, ban a user with an optional reason and an optional expiry, unban a user, and delete a user. Creating a user SHALL NOT generate, show or send a password through the administrator; the new user is invited by email instead. Each operation SHALL report its outcome to the user, distinguishing success from failure.
 
 #### Scenario: Listing users with pagination
 
@@ -106,8 +106,9 @@ An administrator SHALL be able to list users with pagination, filter them by rol
 #### Scenario: Creating a user
 
 - **WHEN** an administrator submits a valid new user with name, email and role
-- **THEN** the user is created
-- **AND** a success message is shown
+- **THEN** the user is created without a password
+- **AND** a success message is shown stating that an invitation was emailed to the user
+- **AND** no password is displayed or copied anywhere
 - **AND** the user list reflects the new user
 
 #### Scenario: Changing a user's role
@@ -145,8 +146,6 @@ An administrator SHALL be able to list users with pagination, filter them by rol
 - **WHEN** any user management operation is rejected by the server
 - **THEN** an error message is shown
 - **AND** the displayed list is not left showing the un-persisted change
-
----
 
 ### Requirement: Administrators can view a single user's full detail
 
@@ -282,3 +281,14 @@ The application SHALL offer a light and a dark theme, SHALL persist the selectio
 
 - **WHEN** the stored theme preference is missing or cannot be read
 - **THEN** the application renders in its default theme without error
+
+### Requirement: Dialogs occupy the full viewport on a narrow screen
+On a viewport narrower than the mobile breakpoint, every dialog the web app opens SHALL occupy the full viewport instead of a fixed-width centred card. On wider viewports, dialog sizing SHALL be unchanged.
+
+#### Scenario: A dialog on a phone
+- **WHEN** a user opens the create-user dialog on a viewport narrower than the mobile breakpoint
+- **THEN** the dialog fills the whole viewport and its content is not clipped
+
+#### Scenario: Desktop dialog sizing is unaffected
+- **WHEN** a user opens the same dialog on a desktop viewport
+- **THEN** it renders with its usual width, centred

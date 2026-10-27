@@ -57,7 +57,7 @@ describe('queue dashboard (integration)', () => {
           validate: (c) => baseEnvSchema.parse(c),
           metrics: { appName: 'worker-bull-board-integration' },
         }),
-        QueueModule.registerQueues([QUEUES.EMAIL]),
+        QueueModule.registerQueues([QUEUES.EMAIL, QUEUES.PUSH]),
         BullBoardDashboardModule,
       ],
     })
@@ -94,7 +94,7 @@ describe('queue dashboard (integration)', () => {
   });
 
   describe('access', () => {
-    it('shows both queues to an admin, all of them read-only', async () => {
+    it('shows every queue to an admin, all of them read-only', async () => {
       const res = await asAdmin(http().get(`${BOARD_API}/queues`)).expect(200);
 
       const queues = res.body.queues as {
@@ -102,7 +102,7 @@ describe('queue dashboard (integration)', () => {
         readOnlyMode: boolean;
       }[];
       expect(queues.map((q) => q.name).sort()).toEqual(
-        [QUEUES.EMAIL, QUEUES.EMAIL_DLQ].sort(),
+        [QUEUES.EMAIL, QUEUES.EMAIL_DLQ, QUEUES.PUSH, QUEUES.PUSH_DLQ].sort(),
       );
       expect(queues.every((q) => q.readOnlyMode)).toBe(true);
     });

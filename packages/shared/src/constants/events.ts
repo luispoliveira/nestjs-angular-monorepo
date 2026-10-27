@@ -12,4 +12,6 @@ export const EVENT_PATTERNS = {
   USER_EMAIL_VERIFICATION_REQUESTED: 'user:email_verification_requested',
   USER_TWO_FACTOR_ENABLED: 'user:two_factor_enabled',
   USER_TWO_FACTOR_DISABLED: 'user:two_factor_disabled',
+  USER_INVITED: 'user:invited',
+  USER_ACCOUNT_ACTIVATED: 'user:account_activated',
 } as const;

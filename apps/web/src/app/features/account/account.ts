@@ -13,6 +13,7 @@ import { changePasswordSchema, updateProfileSchema, userSessionSchema, zodValida
 import { z } from 'zod';
 import { AUTH_CLIENT } from '../../auth/auth-client.token';
 import { SessionService } from '../../auth/session.service';
+import { PushService } from '../../push/push.service';
 import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
 import { RegenerateBackupCodesDialog } from './regenerate-backup-codes-dialog/regenerate-backup-codes-dialog';
 import { TwoFactorDisableDialog } from './two-factor-disable-dialog/two-factor-disable-dialog';
@@ -48,6 +49,7 @@ export class Account {
   private readonly dialog = inject(MatDialog);
   private readonly queryClient = inject(QueryClient);
   private readonly router = inject(Router);
+  protected readonly push = inject(PushService);
 
   protected readonly currentUser = this.session.user;
   protected readonly initials = computed(() => {

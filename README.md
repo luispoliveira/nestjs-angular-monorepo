@@ -16,7 +16,7 @@ A production-ready, full-stack monorepo template combining NestJS microservices 
 | Validation        | Zod v4 + `nestjs-zod`                               |
 | API Contract      | REST (`apps/api`), same-origin from the frontend    |
 | Queue             | BullMQ via `@nestjs/bullmq`                         |
-| Email             | Brevo (via `@getbrevo/brevo`)                       |
+| Email             | Brevo (`@getbrevo/brevo`) or Resend, via `MAIL_PROVIDER` |
 | Logging           | `nestjs-pino` with correlation IDs via `nestjs-cls` |
 | Health            | `@nestjs/terminus`                                  |
 | Observability     | Prometheus + Grafana + Loki (local docker-compose stack) |
@@ -35,7 +35,7 @@ packages/
   database/       # Prisma client, DatabaseModule, DatabaseService, migrations, seeders
   shared/         # Global NestJS infrastructure (SharedModule, guards, interceptors, publishers, queue, health, metrics)
   shared-types/   # Zod v4 schemas + zodValidator() shared between frontend and backend
-  mail/           # MailModule (Brevo provider, MongoDB email logging)
+  mail/           # MailModule (Brevo and Resend providers, MongoDB email logging)
   testing-utils/  # Test factories, DB truncation, testcontainers e2e setup
   eslint-config/  # Shared ESLint configurations
   typescript-config/ # Shared tsconfig bases
@@ -234,16 +234,20 @@ The `auth` service also exposes a `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` RPC endpo
 
 ### Email Notification Pipeline
 
-All six better-auth lifecycle events trigger email notifications:
+All eight better-auth lifecycle events trigger email notifications:
 
 | Event                               | Email Sent                    |
 | ----------------------------------- | ----------------------------- |
-| `USER_CREATED`                      | Welcome email                 |
+| `USER_CREATED`                      | Welcome email (self sign-up)  |
+| `USER_INVITED`                      | Invitation to set a password (account created by an admin) |
+| `USER_ACCOUNT_ACTIVATED`            | Account activated (first password set) |
 | `USER_PASSWORD_RESET_REQUESTED`     | Password reset                |
 | `USER_PASSWORD_CHANGED`             | Password changed confirmation |
 | `USER_EMAIL_VERIFICATION_REQUESTED` | Email verification            |
 | `USER_TWO_FACTOR_ENABLED`           | 2FA enabled confirmation      |
 | `USER_TWO_FACTOR_DISABLED`          | 2FA disabled confirmation     |
+
+An administrator never sees or sets a new user's password: creating a user emails them an invitation (a single-use `/reset-password` link, valid one hour) and setting the first password activates the account. A reset requested for an account that never set a password re-sends the invitation.
 
 ## Environment Variables
 
@@ -325,7 +329,9 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 MONGO_URI=mongodb://nestjs:change-me@localhost:27017/nestjs?authSource=admin
 CORS_ORIGIN=http://localhost:8080
+MAIL_PROVIDER=brevo # or resend; only the active provider's key is required
 BREVO_API_KEY=your-brevo-api-key
+# RESEND_API_KEY=re_...
 FROM_EMAIL=no-reply@example.com
 FROM_NAME=My App
 DEV_EMAIL=dev@example.com
@@ -351,7 +357,11 @@ export const environment = {
 
 The frontend's own API is always the relative `/api` prefix, proxied same-origin (`apps/web/proxy.conf.json` in dev, nginx in production) — never a configured host.
 
-`METRICS_TOKEN` and `SENTRY_DSN` are optional on every NestJS app — leave them empty to disable auth on the metrics endpoint / disable Sentry.
+`SENTRY_DSN` is optional on every NestJS app — leave it empty to disable Sentry. `METRICS_TOKEN` may be left empty outside production (the metrics endpoint is then open), but in production an empty token makes `/api/metrics` refuse every request.
+
+### PWA
+
+The web app is installable (`apps/web/public/manifest.webmanifest`) and, in production builds only, registers an Angular service worker that caches the static shell so it still loads after a brief loss of connectivity. API data (`/api/**`) is never cached, and a navigation to an `/api/` path reaches the server instead of receiving `index.html`. To brand it, replace the placeholder files in `apps/web/public/icons/` (same names and sizes) and edit `name`, `short_name` and `theme_color` in the manifest. The web server must serve `ngsw-worker.js` and `ngsw.json` with `Cache-Control: no-cache` (see [DEPLOY.md](DEPLOY.md)).
 
 ## Internal Packages
 
@@ -390,9 +400,9 @@ import {
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SERVICES`         | `AUTH`, `NOTIFICATIONS`                                                                                                                                                              |
 | `QUEUES`           | `EMAIL: 'email-queue'`, `EMAIL_DLQ: 'email-queue-dlq'`                                                                                                                               |
-| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`                 |
+| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`, `USER_INVITED`, `USER_ACCOUNT_ACTIVATED`                 |
 | `MESSAGE_PATTERNS` | `AUTH_AUTHENTICATE`                                                                                                                                                                  |
-| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL` |
+| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL`, `SEND_ACCOUNT_INVITATION_EMAIL`, `SEND_ACCOUNT_ACTIVATED_EMAIL` |
 
 ### `@repo/database`
 
@@ -415,7 +425,7 @@ import {
 
 ### `@repo/mail`
 
-Email delivery via Brevo. Configure with `MailModule.forRootAsync()`. Logs all sent emails to MongoDB (`EmailLog`) with a 30-day TTL.
+Email delivery via Brevo (default) or Resend, chosen with `MAIL_PROVIDER`. Configure with `MailModule.forRootAsync()`. Logs all sent emails to MongoDB (`EmailLog`) with a 30-day TTL.
 
 ## Audit log
 

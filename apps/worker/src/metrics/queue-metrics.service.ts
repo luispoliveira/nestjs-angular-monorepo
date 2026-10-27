@@ -12,35 +12,49 @@ export class QueueMetricsService implements OnModuleInit {
   constructor(
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.EMAIL_DLQ) private readonly emailDlqQueue: Queue,
+    @InjectQueue(QUEUES.PUSH) private readonly pushQueue: Queue,
+    @InjectQueue(QUEUES.PUSH_DLQ) private readonly pushDlqQueue: Queue,
   ) {}
 
   onModuleInit(): void {
-    const queue = this.emailQueue;
-    const dlqQueue = this.emailDlqQueue;
-    const queueName = QUEUES.EMAIL;
-    const dlqQueueName = QUEUES.EMAIL_DLQ;
+    const pairs = [
+      {
+        queue: this.emailQueue,
+        name: QUEUES.EMAIL,
+        dlq: this.emailDlqQueue,
+        dlqName: QUEUES.EMAIL_DLQ,
+      },
+      {
+        queue: this.pushQueue,
+        name: QUEUES.PUSH,
+        dlq: this.pushDlqQueue,
+        dlqName: QUEUES.PUSH_DLQ,
+      },
+    ];
 
     new Gauge({
       name: 'bullmq_queue_depth',
       help: 'BullMQ queue depth by state',
       labelNames: ['queue', 'state'],
       async collect() {
-        const counts = await queue.getJobCounts(
-          'waiting',
-          'active',
-          'delayed',
-          'failed',
-        );
-        this.set({ queue: queueName, state: 'waiting' }, counts.waiting ?? 0);
-        this.set({ queue: queueName, state: 'active' }, counts.active ?? 0);
-        this.set({ queue: queueName, state: 'delayed' }, counts.delayed ?? 0);
-        this.set({ queue: queueName, state: 'failed' }, counts.failed ?? 0);
+        for (const { queue, name, dlq, dlqName } of pairs) {
+          const counts = await queue.getJobCounts(
+            'waiting',
+            'active',
+            'delayed',
+            'failed',
+          );
+          this.set({ queue: name, state: 'waiting' }, counts.waiting ?? 0);
+          this.set({ queue: name, state: 'active' }, counts.active ?? 0);
+          this.set({ queue: name, state: 'delayed' }, counts.delayed ?? 0);
+          this.set({ queue: name, state: 'failed' }, counts.failed ?? 0);
 
-        const dlqCounts = await dlqQueue.getJobCounts('waiting');
-        this.set(
-          { queue: dlqQueueName, state: 'waiting' },
-          dlqCounts.waiting ?? 0,
-        );
+          const dlqCounts = await dlq.getJobCounts('waiting');
+          this.set(
+            { queue: dlqName, state: 'waiting' },
+            dlqCounts.waiting ?? 0,
+          );
+        }
       },
     });
 
@@ -58,14 +72,18 @@ export class QueueMetricsService implements OnModuleInit {
     });
   }
 
-  recordDuration(jobName: string, durationMs: number): void {
+  recordDuration(
+    jobName: string,
+    durationMs: number,
+    queue: string = QUEUES.EMAIL,
+  ): void {
     this.durationHistogram.observe(
-      { queue: QUEUES.EMAIL, job_name: jobName },
+      { queue, job_name: jobName },
       durationMs / 1000,
     );
   }
 
-  recordFailure(jobName: string): void {
-    this.failureCounter.inc({ queue: QUEUES.EMAIL, job_name: jobName });
+  recordFailure(jobName: string, queue: string = QUEUES.EMAIL): void {
+    this.failureCounter.inc({ queue, job_name: jobName });
   }
 }

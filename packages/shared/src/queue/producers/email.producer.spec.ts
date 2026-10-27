@@ -61,4 +61,26 @@ describe('EmailProducer', () => {
       expect.objectContaining({ email: 'a@b.com' }),
     );
   });
+
+  it('should add SEND_ACCOUNT_INVITATION_EMAIL job with email and invitationLink', async () => {
+    await producer.sendAccountInvitationEmail({
+      email: 'a@b.com',
+      invitationLink: 'https://app.test/reset-password?token=t',
+    });
+    expect(queue.add).toHaveBeenCalledWith(
+      JOB_PATTERNS.SEND_ACCOUNT_INVITATION_EMAIL,
+      expect.objectContaining({
+        email: 'a@b.com',
+        invitationLink: 'https://app.test/reset-password?token=t',
+      }),
+    );
+  });
+
+  it('should add SEND_ACCOUNT_ACTIVATED_EMAIL job with email', async () => {
+    await producer.sendAccountActivatedEmail({ email: 'a@b.com' });
+    expect(queue.add).toHaveBeenCalledWith(
+      JOB_PATTERNS.SEND_ACCOUNT_ACTIVATED_EMAIL,
+      expect.objectContaining({ email: 'a@b.com' }),
+    );
+  });
 });

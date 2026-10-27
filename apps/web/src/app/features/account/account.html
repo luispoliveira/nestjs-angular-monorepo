@@ -152,6 +152,65 @@
     </mat-card-content>
   </mat-card>
 
+  <mat-card data-testid="push-card">
+    <mat-card-header>
+      <mat-card-title>Push notifications</mat-card-title>
+      <mat-card-subtitle>Get notified in this browser, even when the app is closed</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @switch (push.status()) {
+        @case ('unsupported') {
+          <p class="text-sm text-gray-500" data-testid="push-unsupported">{{ push.unsupportedReason }}</p>
+        }
+        @case ('blocked') {
+          <p class="text-sm text-gray-500" data-testid="push-blocked">
+            Notifications are blocked for this site. Allow them in your browser's site settings, then come back here.
+          </p>
+        }
+        @case ('enabled') {
+          <p class="text-sm">Push notifications are on for this browser.</p>
+        }
+        @default {
+          <p class="text-sm">Push notifications are off for this browser.</p>
+        }
+      }
+    </mat-card-content>
+    @if (push.status() === 'disabled' || push.status() === 'enabled') {
+      <mat-card-actions align="end">
+        @if (push.status() === 'enabled') {
+          <button
+            mat-button
+            type="button"
+            [disabled]="push.pending()"
+            (click)="push.sendTest()"
+            data-testid="push-test-button"
+          >
+            Send test
+          </button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="push.pending()"
+            (click)="push.disable()"
+            data-testid="push-disable-button"
+          >
+            Turn off
+          </button>
+        } @else {
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="push.pending()"
+            (click)="push.enable()"
+            data-testid="push-enable-button"
+          >
+            Turn on
+          </button>
+        }
+      </mat-card-actions>
+    }
+  </mat-card>
+
   <mat-card>
     <mat-card-header>
       <mat-card-title>Danger zone</mat-card-title>

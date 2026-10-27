@@ -24,6 +24,21 @@ describe('MetricsAuthGuard', () => {
     expect(guard.canActivate(makeContext())).toBe(true);
   });
 
+  it('should allow access outside production when NODE_ENV is development and no token is set', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'NODE_ENV' ? 'development' : undefined,
+    );
+    expect(guard.canActivate(makeContext())).toBe(true);
+  });
+
+  it('should deny access in production when no METRICS_TOKEN is configured', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'NODE_ENV' ? 'production' : undefined,
+    );
+    expect(guard.canActivate(makeContext())).toBe(false);
+    expect(guard.canActivate(makeContext('Bearer anything'))).toBe(false);
+  });
+
   it('should allow access when Authorization header matches the token', () => {
     configService.get.mockReturnValue('my-secret');
     expect(guard.canActivate(makeContext('Bearer my-secret'))).toBe(true);

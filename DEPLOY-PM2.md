@@ -91,7 +91,10 @@ O Angular gera um bundle estático em `apps/web/dist/web/browser/`, servido dire
 
 ## 4. Configurar Variáveis de Ambiente
 
-Criar um ficheiro `.env` em cada app. As variáveis são carregadas pelo PM2 via `env_production` no ecosystem file (secção 5).
+As variáveis de **todas** as apps vão num único ficheiro partilhado, na raiz do repositório (`.env.production`, ou `.env.qa` para QA, com fallback para `.env`). O `ecosystem.config.js` lê-o e passa o seu conteúdo a cada app (secção 5). As secções abaixo listam as variáveis de cada app: o ficheiro partilhado é a união dos blocos.
+
+- `PORT` e `NODE_ENV` são definidos pelo ecosystem (cada app tem a sua porta, `NODE_ENV=production` também em QA) e **sobrepõem-se** ao que constar do ficheiro; não os ponhas lá.
+- Uma variável **opcional** que não vais usar tem de ser **omitida (ou comentada), nunca deixada vazia**: `DEV_EMAIL=` e `SENTRY_DSN=` falham a validação (`z.email()`/`z.url()`) e a app não arranca.
 
 ### Gerar secrets
 
@@ -200,10 +203,13 @@ CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
+# brevo (por omissão) ou resend; só a key do provider ativo é obrigatória
+MAIL_PROVIDER=brevo
 BREVO_API_KEY=<API key do Brevo>
+# RESEND_API_KEY=<API key do Resend>
 FROM_EMAIL=noreply@<dominio-frontend>
 FROM_NAME=<Nome da App>
-DEV_EMAIL=
+# DEV_EMAIL=   (só em desenvolvimento: omitir em produção, vazio falha a validação)
 ```
 
 ---
@@ -225,16 +231,16 @@ A API própria do frontend é sempre o prefixo relativo `/api`, servido same-ori
 
 O ficheiro `ecosystem.config.js` já existe na raiz do projeto.
 
-### Env files por app
+### Env file partilhado
 
-Criar os seguintes ficheiros antes do deploy (copiar do `.env.example` e preencher):
+Criar, na raiz do repositório, antes do deploy (juntar as variáveis dos blocos da secção 4):
 
 ```
-apps/auth/.env.production          apps/auth/.env.qa
-apps/api/.env.production           apps/api/.env.qa
-apps/notifications/.env.production apps/notifications/.env.qa
-apps/worker/.env.production        apps/worker/.env.qa
+.env.production    # produção
+.env.qa            # QA (NODE_ENV continua a ser production: o que distingue QA é este ficheiro)
 ```
+
+Se o ficheiro específico não existir, o ecosystem usa `.env` e avisa (`[PM2] WARNING`) quando não encontra nenhum.
 
 `web` não tem `.env` em runtime — a configuração é compilada no build (ver §3/§4 acima e `apps/web/src/environments/environment.prod.ts`).
 
@@ -286,6 +292,10 @@ pm2 start ecosystem.config.js --env production
 
 # QA
 # pm2 start ecosystem.config.js --env qa
+
+# Todo o `pm2 start|reload|restart` do ecosystem TEM de levar `--env <nome>`:
+# o PM2 só aplica um bloco `env_<nome>` quando lho pedem e, sem `--env`, as apps
+# arrancam sem variáveis nenhumas. `make deploy|start|restart ENV=qa` já o faz.
 
 # Ver estado de todos os processos
 pm2 status
@@ -364,8 +374,8 @@ sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```bash
 cd /opt/<app-name>
 
-# 1. Buscar código novo
-git pull origin main
+# 1. Buscar código novo (da branch em que o servidor está)
+git pull
 
 # 2. Instalar novas dependências (se houver)
 pnpm install --frozen-lockfile
@@ -396,11 +406,11 @@ pm2 reload all
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth`
-- [ ] `BREVO_API_KEY` válida em `apps/worker`
+- [ ] `BREVO_API_KEY` (ou `RESEND_API_KEY` se `MAIL_PROVIDER=resend`) válida em `apps/worker`
 - [ ] `pnpm build` executado com sucesso
 - [ ] `pnpm db:migrate` executado
 - [ ] `pnpm db:seed` executado
-- [ ] Env files criados por app (`.env.production` / `.env.qa`)
+- [ ] Env file partilhado criado na raiz (`.env.production` / `.env.qa`), sem variáveis opcionais vazias
 - [ ] `pm2-logrotate` instalado e configurado
 - [ ] `pm2 start ecosystem.config.js --env production` executado
 - [ ] `pm2 startup` + `pm2 save` configurados

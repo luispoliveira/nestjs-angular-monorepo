@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { randomBytes } from 'crypto';
+import { createECDH, randomBytes } from 'crypto';
 import { dirname, resolve } from 'path';
 import { createInterface } from 'readline/promises';
 import { fileURLToPath } from 'url';
@@ -30,7 +30,7 @@ async function prompt(rl, question, defaultValue) {
 }
 
 // ─── Replace DB credentials + auth secret in an .env file content ────────────
-function applyCredentials(content, pg, mongo, secret, fieldKeys) {
+function applyCredentials(content, pg, mongo, secret, fieldKeys, vapid) {
   // postgres://USER:PASS@HOST:PORT/DB?query
   content = content.replace(
     /(postgres:\/\/)[^:@]+:[^@]*@([^/]+)\/[^?'"\s]*/g,
@@ -61,7 +61,28 @@ function applyCredentials(content, pg, mongo, secret, fieldKeys) {
       `FIELD_ENCRYPTION_HMAC_KEY="${fieldKeys.hmac}"`,
     );
   }
+  // Web push VAPID pair — api serves the public half, worker signs with both
+  if (vapid) {
+    content = content.replace(
+      /^VAPID_PUBLIC_KEY=.*/m,
+      `VAPID_PUBLIC_KEY="${vapid.publicKey}"`,
+    );
+    content = content.replace(
+      /^VAPID_PRIVATE_KEY=.*/m,
+      `VAPID_PRIVATE_KEY="${vapid.privateKey}"`,
+    );
+  }
   return content;
+}
+
+// ─── VAPID key pair (same raw P-256 base64url format as `web-push generate-vapid-keys`)
+function generateVapidKeys() {
+  const ecdh = createECDH('prime256v1');
+  ecdh.generateKeys();
+  return {
+    publicKey: ecdh.getPublicKey().toString('base64url'),
+    privateKey: ecdh.getPrivateKey().toString('base64url'),
+  };
 }
 
 // ─── Local-dev overrides for apps/auth's browser-facing URLs ────────────────
@@ -135,6 +156,7 @@ async function main() {
     encryption: randomBytes(32).toString('base64'),
     hmac: randomBytes(32).toString('base64'),
   };
+  const vapid = generateVapidKeys();
 
   // ── Apply ────────────────────────────────────────────────────────────────
   step('Applying changes');
@@ -164,6 +186,7 @@ async function main() {
       mongo,
       betterAuthSecret,
       fieldKeys,
+      vapid,
     );
     if (dest === 'apps/auth/.env') content = applyAuthDevDefaults(content);
     writeFileSync(destPath, content);

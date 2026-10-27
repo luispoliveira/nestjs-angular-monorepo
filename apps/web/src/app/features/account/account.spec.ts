@@ -1,10 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { RoleEnum } from '@repo/shared-types';
 import { of } from 'rxjs';
 import { AUTH_CLIENT, SessionAtomClient } from '../../auth/auth-client.token';
+import { PushService } from '../../push/push.service';
 import { Account } from './account';
 import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
 import { RegenerateBackupCodesDialog } from './regenerate-backup-codes-dialog/regenerate-backup-codes-dialog';
@@ -58,6 +62,27 @@ async function waitForSettled(fixture: ComponentFixture<Account>, isPending: () 
   throw new Error('Mutation did not settle in time');
 }
 
+interface FakePush {
+  status: ReturnType<typeof signal<'unsupported' | 'blocked' | 'disabled' | 'enabled'>>;
+  pending: ReturnType<typeof signal<boolean>>;
+  unsupportedReason: string;
+  enable: ReturnType<typeof vi.fn>;
+  disable: ReturnType<typeof vi.fn>;
+  sendTest: ReturnType<typeof vi.fn>;
+}
+
+function fakePush(overrides: Partial<FakePush> = {}): FakePush {
+  return {
+    status: signal<'unsupported' | 'blocked' | 'disabled' | 'enabled'>('disabled'),
+    pending: signal(false),
+    unsupportedReason: 'Push notifications are not available in this browser.',
+    enable: vi.fn().mockResolvedValue(undefined),
+    disable: vi.fn().mockResolvedValue(undefined),
+    sendTest: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function setUp(overrides: {
   updateUser?: (args: unknown) => Promise<unknown>;
   changeEmail?: (args: unknown) => Promise<unknown>;
@@ -69,6 +94,7 @@ function setUp(overrides: {
   name?: string;
   email?: string;
   twoFactorEnabled?: boolean;
+  push?: Partial<FakePush>;
 }) {
   const { atom, set } = fakeSessionAtom(
     overrides.name ?? 'Jane Doe',
@@ -79,6 +105,9 @@ function setUp(overrides: {
     providers: [
       provideTanStackQuery(new QueryClient()),
       provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      { provide: PushService, useValue: { ...fakePush(), ...overrides.push } },
       {
         provide: AUTH_CLIENT,
         useValue: {
@@ -329,5 +358,58 @@ describe('Account', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  describe('push notifications card', () => {
+    const card = (fixture: ComponentFixture<Account>) =>
+      fixture.nativeElement.querySelector('[data-testid="push-card"]') as HTMLElement | null;
+    const byId = (fixture: ComponentFixture<Account>, id: string) =>
+      fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement | null;
+
+    it('offers to enable push when this browser can receive it', () => {
+      const { fixture } = setUp({});
+      expect(card(fixture)).not.toBeNull();
+      expect(byId(fixture, 'push-enable-button')).not.toBeNull();
+      expect(byId(fixture, 'push-disable-button')).toBeNull();
+      expect(byId(fixture, 'push-test-button')).toBeNull();
+    });
+
+    it('enables push when the button is clicked', () => {
+      const push = fakePush();
+      const { fixture } = setUp({ push });
+      byId(fixture, 'push-enable-button')!.click();
+      expect(push.enable).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers to disable and to send a test once push is enabled', () => {
+      const push = fakePush({ status: signal('enabled' as const) });
+      const { fixture } = setUp({ push });
+      expect(byId(fixture, 'push-enable-button')).toBeNull();
+      byId(fixture, 'push-disable-button')!.click();
+      byId(fixture, 'push-test-button')!.click();
+      expect(push.disable).toHaveBeenCalledTimes(1);
+      expect(push.sendTest).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not offer the option, and says why, where push is unsupported', () => {
+      const { fixture } = setUp({ push: fakePush({ status: signal('unsupported' as const) }) });
+      expect(byId(fixture, 'push-enable-button')).toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="push-unsupported"]')?.textContent,
+      ).toContain('not available in this browser');
+    });
+
+    it('says push is blocked in the browser settings when permission was denied', () => {
+      const { fixture } = setUp({ push: fakePush({ status: signal('blocked' as const) }) });
+      expect(byId(fixture, 'push-enable-button')).toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="push-blocked"]')?.textContent,
+      ).toMatch(/blocked/i);
+    });
+
+    it('disables the buttons while a request is in flight', () => {
+      const { fixture } = setUp({ push: fakePush({ pending: signal(true) }) });
+      expect(byId(fixture, 'push-enable-button')!.disabled).toBe(true);
+    });
   });
 });

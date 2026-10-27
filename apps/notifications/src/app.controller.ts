@@ -2,10 +2,14 @@ import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import {
   EVENT_PATTERNS,
+  UserAccountActivatedInput,
+  userAccountActivatedInputSchema,
   UserCreatedInput,
   userCreatedInputSchema,
   UserEmailVerificationRequestedInput,
   userEmailVerificationRequestedSchema,
+  UserInvitedInput,
+  userInvitedInputSchema,
   UserPasswordChangedInput,
   userPasswordChangedInputSchema,
   UserPasswordResetRequestedInput,
@@ -84,5 +88,25 @@ export class AppController {
       `Sending USER_TWO_FACTOR_DISABLED notification to ${validated.email}`,
     );
     return this.appService.sendTwoFactorDisabledNotification(validated.email);
+  }
+
+  @EventPattern(EVENT_PATTERNS.USER_INVITED)
+  sendAccountInvitationNotification(@Payload() data: UserInvitedInput) {
+    const validated = z.parse(userInvitedInputSchema, data);
+    // The invitation link is a live credential: log the recipient only.
+    this.logger.log(`Sending USER_INVITED notification to ${validated.email}`);
+    return this.appService.sendAccountInvitationNotification(
+      validated.email,
+      validated.invitationLink,
+    );
+  }
+
+  @EventPattern(EVENT_PATTERNS.USER_ACCOUNT_ACTIVATED)
+  sendAccountActivatedNotification(@Payload() data: UserAccountActivatedInput) {
+    const validated = z.parse(userAccountActivatedInputSchema, data);
+    this.logger.log(
+      `Sending USER_ACCOUNT_ACTIVATED notification to ${validated.email}`,
+    );
+    return this.appService.sendAccountActivatedNotification(validated.email);
   }
 }

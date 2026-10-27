@@ -14,11 +14,15 @@ Lets operators inspect and act on dead-letter queues (list, replay and purge) th
 - **THEN** `DLQ_LIST`, `DLQ_REPLAY`, and `DLQ_PURGE` are available as typed string constants
 
 ### Requirement: Worker app exposes DLQ message pattern handlers
-`apps/worker/src/dlq/dlq.controller.ts` SHALL implement `@MessagePattern` handlers for `DLQ_LIST`, `DLQ_REPLAY`, and `DLQ_PURGE`. Each handler SHALL delegate to `EmailDlqService` and return a serialisable result over the Redis microservice transport.
+`apps/worker/src/dlq/dlq.controller.ts` SHALL implement `@MessagePattern` handlers for `DLQ_LIST`, `DLQ_REPLAY`, and `DLQ_PURGE`. Each handler SHALL delegate to the DLQ service of the queue named in the payload (`email-queue` or `push-queue`) and return a serialisable result over the Redis microservice transport. A payload naming any other queue SHALL return an error response.
 
 #### Scenario: DLQ_LIST returns current DLQ job list
 - **WHEN** `DLQ_LIST` is received with `{ queue: 'email-queue', page: number, limit: number }`
 - **THEN** the handler returns `{ jobs: DlqJobDto[], total: number }`
+
+#### Scenario: DLQ_LIST for the push queue
+- **WHEN** `DLQ_LIST` is received with `{ queue: 'push-queue', page: number, limit: number }`
+- **THEN** the handler returns the jobs of `push-queue-dlq` as `{ jobs: DlqJobDto[], total: number }`
 
 #### Scenario: DLQ_REPLAY replays a specific job
 - **WHEN** `DLQ_REPLAY` is received with `{ queue: 'email-queue', jobId: string }`
@@ -30,6 +34,10 @@ Lets operators inspect and act on dead-letter queues (list, replay and purge) th
 - **WHEN** `DLQ_PURGE` is received with `{ queue: 'email-queue' }`
 - **THEN** the handler calls `EmailDlqService.purge()` and returns `{ removed: number }`
 
+#### Scenario: Unknown queue
+- **WHEN** any DLQ handler is received with `{ queue: 'other-queue' }`
+- **THEN** the handler returns an error response and no queue is touched
+
 ### Requirement: EmailDlqService extends BaseDlqService for the email queue
 `apps/worker/src/dlq/email.dlq.service.ts` SHALL extend `BaseDlqService`, injecting `QUEUES.EMAIL_DLQ` as the DLQ queue and `QUEUES.EMAIL` as the original queue.
 
@@ -38,11 +46,11 @@ Lets operators inspect and act on dead-letter queues (list, replay and purge) th
 - **THEN** `EmailDlqService` is available via NestJS dependency injection in the worker app
 
 ### Requirement: A read-only queue dashboard is mounted in the worker app at /admin/queues
-The worker app SHALL mount the Bull Board NestJS adapter at the path `/admin/queues`. Both `email-queue` and `email-queue-dlq` SHALL be visible in the Bull Board UI. Access SHALL be limited to authenticated admins, and each kind of rejected caller SHALL be distinguishable by status code alone.
+The worker app SHALL mount the Bull Board NestJS adapter at the path `/admin/queues`. `email-queue`, `email-queue-dlq`, `push-queue` and `push-queue-dlq` SHALL be visible in the Bull Board UI. Access SHALL be limited to authenticated admins, and each kind of rejected caller SHALL be distinguishable by status code alone.
 
 #### Scenario: Bull Board shows both queues
 - **WHEN** an authenticated admin user navigates to `/admin/queues`
-- **THEN** the Bull Board UI renders with `email-queue` and `email-queue-dlq` listed
+- **THEN** the Bull Board UI renders with `email-queue`, `email-queue-dlq`, `push-queue` and `push-queue-dlq` listed
 
 #### Scenario: Unauthenticated access is rejected
 - **WHEN** a request without a valid admin session accesses `/admin/queues`
@@ -62,7 +70,7 @@ The worker app SHALL mount the Bull Board NestJS adapter at the path `/admin/que
 - **AND** replaying a DLQ job remains available only through `DLQ_REPLAY`
 
 ### Requirement: The dashboard never shows account links
-Job data displayed by the dashboard SHALL have every password-reset and email-verification link replaced by a fixed placeholder. Other job data fields SHALL remain visible.
+Job data displayed by the dashboard SHALL have every password-reset, email-verification and account-invitation link replaced by a fixed placeholder. Other job data fields SHALL remain visible.
 
 #### Scenario: Password reset job
 - **WHEN** an admin opens a password-reset email job in either queue
@@ -71,6 +79,10 @@ Job data displayed by the dashboard SHALL have every password-reset and email-ve
 #### Scenario: Verification job in the DLQ
 - **WHEN** an admin opens an email-verification job in `email-queue-dlq`
 - **THEN** its `verificationLink` is shown as a placeholder
+
+#### Scenario: Invitation job
+- **WHEN** an admin opens an account-invitation email job in either queue
+- **THEN** its invitation link is shown as a placeholder and the recipient email is shown
 
 #### Scenario: Redaction does not alter the job
 - **WHEN** a redacted job is later replayed through `DLQ_REPLAY`

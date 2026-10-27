@@ -28,6 +28,7 @@ export class BrevoProvider implements MailProvider {
     request.to = mail.to;
     request.subject = mail.subject;
     request.textContent = mail.text;
+    if (mail.html) request.htmlContent = mail.html;
 
     if (mail.cc) request.cc = mail.cc;
 

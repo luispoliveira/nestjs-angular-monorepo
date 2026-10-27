@@ -45,4 +45,20 @@ export class AppService {
       email,
     });
   }
+
+  async sendAccountInvitationNotification(
+    email: string,
+    invitationLink: string,
+  ) {
+    await this.producer.sendAccountInvitationEmail({
+      email,
+      invitationLink,
+    });
+  }
+
+  async sendAccountActivatedNotification(email: string) {
+    await this.producer.sendAccountActivatedEmail({
+      email,
+    });
+  }
 }

@@ -63,7 +63,15 @@ describe('MailService', () => {
 
     it('should throw wrapped error when provider fails', async () => {
       mailProvider.send.mockRejectedValue(new Error('SMTP error'));
-      await expect(service.send(mockMail)).rejects.toThrow('Failed to send email after multiple attempts.');
+      await expect(service.send(mockMail)).rejects.toThrow(
+        'Failed to send email after multiple attempts: SMTP error',
+      );
+    });
+
+    it('should not write an email log entry when the provider rejects the send', async () => {
+      mailProvider.send.mockRejectedValue(new Error('domain not verified'));
+      await expect(service.send(mockMail)).rejects.toThrow('domain not verified');
+      expect(mongoService.createEmailLog).not.toHaveBeenCalled();
     });
   });
 

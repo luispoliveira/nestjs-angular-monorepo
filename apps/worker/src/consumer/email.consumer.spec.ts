@@ -152,6 +152,56 @@ describe('EmailConsumer', () => {
     });
   });
 
+  describe('sendAccountInvitationEmail()', () => {
+    const link = 'https://app.test/reset-password?token=abc';
+
+    it('should send the rendered invitation with html and text bodies', async () => {
+      const job = {
+        id: 'job-20',
+        data: { email: 'user@example.com', invitationLink: link },
+      } as Job;
+      await consumer['sendAccountInvitationEmail'](job as never);
+      expect(mailService.send).toHaveBeenCalledTimes(1);
+      const mail = mailService.send.mock.calls[0]![0];
+      expect(mail.to).toEqual([{ email: 'user@example.com' }]);
+      expect(mail.subject).toBe('Your account has been created');
+      expect(mail.html).toContain(link);
+      expect(mail.text).toContain(link);
+    });
+
+    it('should not write the invitation link to the logs', async () => {
+      const logSpy = jest.spyOn(consumer['logger'], 'log');
+      const job = {
+        id: 'job-21',
+        data: { email: 'user@example.com', invitationLink: link },
+      } as Job;
+      await consumer['sendAccountInvitationEmail'](job as never);
+      for (const call of logSpy.mock.calls) {
+        expect(String(call[0])).not.toContain('token=abc');
+      }
+    });
+
+    it('should throw when the invitation link is missing', async () => {
+      const job = { id: 'job-22', data: { email: 'user@example.com' } } as Job;
+      await expect(
+        consumer['sendAccountInvitationEmail'](job as never),
+      ).rejects.toThrow();
+      expect(mailService.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sendAccountActivatedEmail()', () => {
+    it('should send the rendered activation email with html and text bodies', async () => {
+      const job = { id: 'job-23', data: { email: 'user@example.com' } } as Job;
+      await consumer['sendAccountActivatedEmail'](job as never);
+      const mail = mailService.send.mock.calls[0]![0];
+      expect(mail.to).toEqual([{ email: 'user@example.com' }]);
+      expect(mail.subject).toBe('Your account is active');
+      expect(mail.html).toContain('You can now sign in');
+      expect(mail.text).toContain('You can now sign in');
+    });
+  });
+
   describe('process()', () => {
     const makeJob = (name: string, data: Record<string, unknown> = {}) =>
       ({ name, data }) as Job;
@@ -181,6 +231,16 @@ describe('EmailConsumer', () => {
       [
         'job:send_two_factor_disabled_email',
         'sendTwoFactorDisabledEmail',
+        { email: 'a@b.com' },
+      ],
+      [
+        'job:send_account_invitation_email',
+        'sendAccountInvitationEmail',
+        { email: 'a@b.com', invitationLink: 'https://x.com' },
+      ],
+      [
+        'job:send_account_activated_email',
+        'sendAccountActivatedEmail',
         { email: 'a@b.com' },
       ],
     ] as const)(

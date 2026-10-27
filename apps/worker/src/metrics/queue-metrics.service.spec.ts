@@ -29,6 +29,8 @@ describe('QueueMetricsService', () => {
         QueueMetricsService,
         { provide: getQueueToken(QUEUES.EMAIL), useValue: mockQueue },
         { provide: getQueueToken(QUEUES.EMAIL_DLQ), useValue: mockQueue },
+        { provide: getQueueToken(QUEUES.PUSH), useValue: mockQueue },
+        { provide: getQueueToken(QUEUES.PUSH_DLQ), useValue: mockQueue },
       ],
     }).compile();
 
@@ -71,6 +73,26 @@ describe('QueueMetricsService', () => {
     });
   });
 
+  describe('onModuleInit() — push queues', () => {
+    it('reports the depth of the push queue and of its dead-letter queue', async () => {
+      const GaugeMock = Gauge as jest.Mock;
+      const collectFn = GaugeMock.mock.calls[0][0]
+        .collect as () => Promise<void>;
+      const setMock = jest.fn();
+
+      await collectFn.call({ set: setMock });
+
+      expect(setMock).toHaveBeenCalledWith(
+        { queue: QUEUES.PUSH, state: 'waiting' },
+        2,
+      );
+      expect(setMock).toHaveBeenCalledWith(
+        { queue: QUEUES.PUSH_DLQ, state: 'waiting' },
+        2,
+      );
+    });
+  });
+
   describe('recordDuration()', () => {
     it('should observe the histogram with job name and duration converted to seconds', () => {
       const histogram = (service as unknown as Record<string, unknown>)
@@ -82,6 +104,32 @@ describe('QueueMetricsService', () => {
         { queue: QUEUES.EMAIL, job_name: 'send-welcome-email' },
         1.5,
       );
+    });
+  });
+
+  describe('queue label', () => {
+    it('labels a duration with the push queue when one is given', () => {
+      const histogram = (service as unknown as Record<string, unknown>)
+        .durationHistogram as { observe: jest.Mock };
+
+      service.recordDuration('job:send_push_notification', 500, QUEUES.PUSH);
+
+      expect(histogram.observe).toHaveBeenCalledWith(
+        { queue: QUEUES.PUSH, job_name: 'job:send_push_notification' },
+        0.5,
+      );
+    });
+
+    it('labels a failure with the push queue when one is given', () => {
+      const counter = (service as unknown as Record<string, unknown>)
+        .failureCounter as { inc: jest.Mock };
+
+      service.recordFailure('job:send_push_notification', QUEUES.PUSH);
+
+      expect(counter.inc).toHaveBeenCalledWith({
+        queue: QUEUES.PUSH,
+        job_name: 'job:send_push_notification',
+      });
     });
   });
 

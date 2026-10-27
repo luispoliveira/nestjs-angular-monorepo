@@ -114,4 +114,16 @@ describe('LoggingInterceptor', () => {
       expect(mongoService.updateLog).not.toHaveBeenCalled();
     },
   );
+
+  it('should store the request url with the search value redacted', async () => {
+    const context = makeContext(200, '/api/v1/customers?skip=0&search=123456789');
+    const handler = makeHandler(of({ result: 'ok' }));
+
+    const result$ = await interceptor.intercept(context, handler);
+    await new Promise<void>((resolve) => result$.subscribe({ next: () => resolve(), error: resolve }));
+
+    expect(mongoService.createLog).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/api/v1/customers?skip=0&search=[SANITIZED]' }),
+    );
+  });
 });

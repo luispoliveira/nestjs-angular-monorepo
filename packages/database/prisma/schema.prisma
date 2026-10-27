@@ -4,11 +4,52 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  moduleFormat    = "cjs"
+  // Customer.taxIdHash is unique only among non-deleted rows.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// Reference vertical slice — see README "Reference slice: Customers" to remove.
+model Customer {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name           String
+  email          String?
+  notes          String?
+  /// base64(iv || authTag || ciphertext) — EncryptionService.encrypt
+  taxIdEncrypted String?
+  /// HMAC-SHA256 hex of the normalized NIF — EncryptionService.blindIndex
+  taxIdHash      String?
+
+  @@unique([taxIdHash], where: { deletedAt: null })
+  @@index([deletedAt, createdAt])
+  @@map("customer")
+}
+
+// One row per browser that opted in to web push. `endpoint` identifies the
+// browser, so subscribing it again as another user reassigns the row.
+model PushSubscription {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String  @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+
+  @@index([userId])
+  @@map("push_subscription")
 }

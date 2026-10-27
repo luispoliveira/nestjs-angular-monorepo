@@ -7,8 +7,8 @@ Este guia cobre o deploy da plataforma diretamente no servidor usando **PM2** co
 ## Pré-requisitos no Servidor
 
 ```bash
-# Node.js 22
-node --version   # deve ser >= 22
+# Node.js 26
+node --version   # deve ser >= 26
 
 # pnpm
 npm install -g pnpm
@@ -19,6 +19,8 @@ npm install -g pm2
 # (opcional) turbo global — acelera builds repetidos
 npm install -g turbo
 ```
+
+> Ao mudar a versão do Node num servidor que já corre PM2, executar `pm2 update` para o daemon passar a usar o novo runtime antes do próximo `pm2 reload`.
 
 ---
 
@@ -91,7 +93,10 @@ O Angular gera um bundle estático em `apps/web/dist/web/browser/`, servido dire
 
 ## 4. Configurar Variáveis de Ambiente
 
-Criar um ficheiro `.env` em cada app. As variáveis são carregadas pelo PM2 via `env_production` no ecosystem file (secção 5).
+As variáveis de **todas** as apps vão num único ficheiro partilhado, na raiz do repositório (`.env.production`, ou `.env.qa` para QA, com fallback para `.env`). O `ecosystem.config.js` lê-o e passa o seu conteúdo a cada app (secção 5). As secções abaixo listam as variáveis de cada app: o ficheiro partilhado é a união dos blocos.
+
+- `PORT` e `NODE_ENV` são definidos pelo ecosystem (cada app tem a sua porta, `NODE_ENV=production` também em QA) e **sobrepõem-se** ao que constar do ficheiro; não os ponhas lá.
+- Uma variável **opcional** que não vais usar tem de ser **omitida (ou comentada), nunca deixada vazia**: `DEV_EMAIL=` e `SENTRY_DSN=` falham a validação (`z.email()`/`z.url()`) e a app não arranca.
 
 ### Gerar secrets
 
@@ -165,7 +170,7 @@ ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
 ```dotenv
 NODE_ENV=production
-PORT=3300
+PORT=3200
 
 DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
@@ -186,7 +191,7 @@ ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
 ```dotenv
 NODE_ENV=production
-PORT=3400
+PORT=3300
 
 DATABASE_URL=postgres://app_db:<PG_PASS>@localhost:5432/app_db?schema=public
 
@@ -200,10 +205,13 @@ CORS_ORIGIN=https://<dominio-frontend>
 
 ENCRYPTION_KEY=<mesmo valor que apps/auth>
 
+# brevo (por omissão) ou resend; só a key do provider ativo é obrigatória
+MAIL_PROVIDER=brevo
 BREVO_API_KEY=<API key do Brevo>
+# RESEND_API_KEY=<API key do Resend>
 FROM_EMAIL=noreply@<dominio-frontend>
 FROM_NAME=<Nome da App>
-DEV_EMAIL=
+# DEV_EMAIL=   (só em desenvolvimento: omitir em produção, vazio falha a validação)
 ```
 
 ---
@@ -225,16 +233,16 @@ A API própria do frontend é sempre o prefixo relativo `/api`, servido same-ori
 
 O ficheiro `ecosystem.config.js` já existe na raiz do projeto.
 
-### Env files por app
+### Env file partilhado
 
-Criar os seguintes ficheiros antes do deploy (copiar do `.env.example` e preencher):
+Criar, na raiz do repositório, antes do deploy (juntar as variáveis dos blocos da secção 4):
 
 ```
-apps/auth/.env.production          apps/auth/.env.qa
-apps/api/.env.production           apps/api/.env.qa
-apps/notifications/.env.production apps/notifications/.env.qa
-apps/worker/.env.production        apps/worker/.env.qa
+.env.production    # produção
+.env.qa            # QA (NODE_ENV continua a ser production: o que distingue QA é este ficheiro)
 ```
+
+Se o ficheiro específico não existir, o ecosystem usa `.env` e avisa (`[PM2] WARNING`) quando não encontra nenhum.
 
 `web` não tem `.env` em runtime — a configuração é compilada no build (ver §3/§4 acima e `apps/web/src/environments/environment.prod.ts`).
 
@@ -286,6 +294,10 @@ pm2 start ecosystem.config.js --env production
 
 # QA
 # pm2 start ecosystem.config.js --env qa
+
+# Todo o `pm2 start|reload|restart` do ecosystem TEM de levar `--env <nome>`:
+# o PM2 só aplica um bloco `env_<nome>` quando lho pedem e, sem `--env`, as apps
+# arrancam sem variáveis nenhumas. `make deploy|start|restart ENV=qa` já o faz.
 
 # Ver estado de todos os processos
 pm2 status
@@ -340,7 +352,7 @@ pm2 flush
 sudo apt install nginx
 ```
 
-`web` e `auth` vivem em subdomínios irmãos que partilham o domínio pai, para que o cookie de sessão possa ser partilhado entre ambos (SSO). Usar os server blocks prontos em [docs/deploy/nginx/](docs/deploy/nginx/) — `frontend.conf` serve o build estático de `apps/web/dist/web/browser/` diretamente do filesystem e faz proxy same-origin de `/api/` para `api`; `auth.conf` faz proxy de `/api/auth/` para `auth`:
+`web` e `auth` vivem em subdomínios irmãos que partilham o domínio pai, para que o cookie de sessão possa ser partilhado entre ambos (SSO). Usar os server blocks prontos em [docs/deploy/nginx/](docs/deploy/nginx/) — `frontend.conf` serve o build estático de `apps/web/dist/web/browser/` diretamente do filesystem e faz proxy same-origin de `/api/` para `api` e de `/admin/queues/` para o dashboard de filas (só leitura, só admins) do `worker`; `auth.conf` faz proxy de `/api/auth/` para `auth`:
 
 ```bash
 sudo cp docs/deploy/nginx/frontend.conf /etc/nginx/sites-available/frontend
@@ -353,7 +365,9 @@ sudo systemctl reload nginx
 sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```
 
-> O `notifications` (3300) e o `worker` (3400) **não devem ser expostos** — comunicam apenas internamente via Redis. Todas as apps NestJS partilham o mesmo prefixo `/api`; a distinção entre elas é feita pela porta.
+> O `notifications` (3200) e o `worker` (3300) **não devem ser expostos** — comunicam apenas internamente via Redis. Todas as apps NestJS partilham o mesmo prefixo `/api`; a distinção entre elas é feita pela porta.
+>
+> Exceção: o dashboard de filas do `worker` (`/admin/queues/`, fora do prefixo `/api`) é servido pelo `frontend.conf` através de `location ^~ /admin/queues/` — o `^~` é obrigatório, senão a regra dos ficheiros estáticos devolve 404 aos `.js`/`.css` do dashboard. A porta 3300 continua a não ser exposta (o `worker` escuta em todas as interfaces: bloqueá-la na firewall).
 
 ---
 
@@ -362,8 +376,8 @@ sudo certbot --nginx -d <dominio-frontend> -d <dominio-auth>
 ```bash
 cd /opt/<app-name>
 
-# 1. Buscar código novo
-git pull origin main
+# 1. Buscar código novo (da branch em que o servidor está)
+git pull
 
 # 2. Instalar novas dependências (se houver)
 pnpm install --frozen-lockfile
@@ -382,7 +396,7 @@ pm2 reload all
 
 ## 11. Checklist de Deploy
 
-- [ ] Node.js 22, pnpm e PM2 instalados
+- [ ] Node.js 26, pnpm e PM2 instalados
 - [ ] PostgreSQL, Redis e MongoDB a correr
 - [ ] `apps/auth/.env` criado e preenchido
 - [ ] `apps/api/.env` criado e preenchido
@@ -394,13 +408,14 @@ pm2 reload all
 - [ ] `CORS_ORIGIN` sem `*`, apenas o domínio do frontend
 - [ ] `COOKIE_DOMAIN` definido em `apps/auth` se SSO entre `<dominio-frontend>` e `<dominio-auth>` for necessário
 - [ ] `UI_URL` definida em `apps/auth`
-- [ ] `BREVO_API_KEY` válida em `apps/worker`
+- [ ] `BREVO_API_KEY` (ou `RESEND_API_KEY` se `MAIL_PROVIDER=resend`) válida em `apps/worker`
 - [ ] `pnpm build` executado com sucesso
 - [ ] `pnpm db:migrate` executado
 - [ ] `pnpm db:seed` executado
-- [ ] Env files criados por app (`.env.production` / `.env.qa`)
+- [ ] Env file partilhado criado na raiz (`.env.production` / `.env.qa`), sem variáveis opcionais vazias
 - [ ] `pm2-logrotate` instalado e configurado
 - [ ] `pm2 start ecosystem.config.js --env production` executado
 - [ ] `pm2 startup` + `pm2 save` configurados
 - [ ] Nginx configurado e a servir HTTPS em `<dominio-frontend>` e `<dominio-auth>`
 - [ ] Portas 3000, 3100, 3200, 3300, 3400 **não expostas** diretamente ao exterior (apenas 80/443 via Nginx)
+- [ ] `https://<dominio-frontend>/admin/queues/` responde `401` sem sessão, `403` a um utilizador não-admin e `200` a um admin

@@ -1,19 +1,22 @@
 model User {
-  id               String      @id
-  name             String
-  email            String
-  emailVerified    Boolean     @default(false)
-  image            String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  twoFactorEnabled Boolean?    @default(false)
-  role             String?
-  banned           Boolean?    @default(false)
-  banReason        String?
-  banExpires       DateTime?
-  sessions         Session[]
-  accounts         Account[]
-  twofactors       TwoFactor[]
+  id                String             @id
+  name              String
+  email             String
+  emailVerified     Boolean            @default(false)
+  image             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  twoFactorEnabled  Boolean?           @default(false)
+  role              String?
+  banned            Boolean?           @default(false)
+  banReason         String?
+  banExpires        DateTime?
+  sessions          Session[]
+  accounts          Account[]
+  twofactors        TwoFactor[]
+  // Not a better-auth field: the one relation this template adds to `User`
+  // (web push). Keep it when regenerating this file.
+  pushSubscriptions PushSubscription[]
 
   @@unique([email])
   @@map("user")

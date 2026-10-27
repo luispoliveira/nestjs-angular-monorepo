@@ -62,6 +62,31 @@ describe('AuthController', () => {
      * Scenario: AuthService resolves a session with a user object
      * Expected: The user object is returned
      */
+    it('should add impersonatedBy to the reply for an impersonation session', async () => {
+      const mockUser = { id: 'user-id', email: 'test@example.com' };
+      (authService.api.getSession as unknown as jest.Mock).mockResolvedValue({
+        user: mockUser,
+        session: { impersonatedBy: 'admin-id' },
+      });
+
+      const result = await controller.authenticate({ token: 'valid-token' });
+
+      expect(result).toEqual({ ...mockUser, impersonatedBy: 'admin-id' });
+    });
+
+    it('should leave the reply unchanged when the session is not an impersonation', async () => {
+      const mockUser = { id: 'user-id', email: 'test@example.com' };
+      (authService.api.getSession as unknown as jest.Mock).mockResolvedValue({
+        user: mockUser,
+        session: { impersonatedBy: null },
+      });
+
+      const result = await controller.authenticate({ token: 'valid-token' });
+
+      expect(result).toEqual(mockUser);
+      expect(result).not.toHaveProperty('impersonatedBy');
+    });
+
     it('should return user when session is valid', async () => {
       // Arrange
       const mockUser = { id: 'user-id', email: 'test@example.com' };

@@ -14,7 +14,7 @@ See also: [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) | [ENTRYPOINTS.md
 | `pnpm-workspace.yaml` | Declares `apps/*` and `packages/*`; pins `zod ~4.4.3` globally                                             |
 | `turbo.json`          | Turborepo pipeline: build, dev, lint, test, test:cov, test:integration, test:e2e, check-types, db:\* tasks |
 | `docker-compose.yaml` | Local infra: PostgreSQL, MongoDB, Redis, Prometheus, Grafana (per-app service defs + Traefik kept commented for future prod use) |
-| `.nvmrc`              | Node `>=22` (pinned `v24.19.0`)                                                                             |
+| `.nvmrc`              | Node `>=26` (pinned `v26.12.1`)                                                                             |
 | `docker/`             | Compose service config: `docker/prometheus/prometheus.yml` (scrape config), `docker/grafana/provisioning/` (datasource), `postgres.env`/`mongo.env` |
 | `openspec/specs/`     | Archived OpenSpec specs, one per shipped change (e.g. `angular-web-app/spec.md`, `local-observability-stack/spec.md`) |
 | `openspec/changes/archive/` | Completed OpenSpec change proposals, incl. `2026-08-26-migrate-web-to-angular` (Next.js → Angular migration) |
@@ -61,7 +61,7 @@ See also: [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) | [ENTRYPOINTS.md
 
 ### `apps/cron/`
 
-**Role**: NestJS scheduled-jobs runner. Port `3200`. No business HTTP routes — health/metrics/docs only.
+**Role**: NestJS scheduled-jobs runner. Port `3400`. No business HTTP routes — health/metrics/docs only.
 
 | Path                                        | Role                                                                          |
 | -------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -83,7 +83,7 @@ Redis-event–driven notification dispatcher. Enqueues email jobs into BullMQ.
 
 | Path                         | Role                                                                       |
 | ---------------------------- | ---------------------------------------------------------------------------- |
-| `src/main.ts`                | Bootstrap: `globalPrefix='api'`, Redis microservice transport, port `3300` |
+| `src/main.ts`                | Bootstrap: `globalPrefix='api'`, Redis microservice transport, port `3200` |
 | `src/app.module.ts`          | Imports `SharedModule`, `QueueModule.registerQueues([QUEUES.EMAIL])`       |
 | `src/app.controller.ts`      | Six `@EventPattern` handlers (see [ENTRYPOINTS.md](ENTRYPOINTS.md))        |
 | `src/app.service.ts`         | Delegates to `EmailProducer` for each event type                           |
@@ -99,7 +99,7 @@ BullMQ consumer. Processes email jobs and handles the Dead Letter Queue.
 
 | Path                                        | Role                                                                                            |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `src/main.ts`                               | Bootstrap: `globalPrefix='api'`, Redis microservice transport, port `3400`                      |
+| `src/main.ts`                               | Bootstrap: `globalPrefix='api'`, Redis microservice transport, port `3300`                      |
 | `src/app.module.ts`                         | Imports `SharedModule`, `QueueModule.registerQueues([QUEUES.EMAIL])`, `MailModule`, `DlqModule` |
 | `src/consumer/email.consumer.ts`            | `@Processor(QUEUES.EMAIL)` — dispatches on `job.name`; routes exhausted jobs to DLQ, records metrics via `QueueMetricsService` |
 | `src/consumer/email.consumer.spec.ts`       | Unit tests for `EmailConsumer`                                                                  |

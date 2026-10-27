@@ -16,7 +16,7 @@ A production-ready, full-stack monorepo template combining NestJS microservices 
 | Validation        | Zod v4 + `nestjs-zod`                               |
 | API Contract      | REST (`apps/api`), same-origin from the frontend    |
 | Queue             | BullMQ via `@nestjs/bullmq`                         |
-| Email             | Brevo (via `@getbrevo/brevo`)                       |
+| Email             | Brevo (`@getbrevo/brevo`) or Resend, via `MAIL_PROVIDER` |
 | Logging           | `nestjs-pino` with correlation IDs via `nestjs-cls` |
 | Health            | `@nestjs/terminus`                                  |
 | Observability     | Prometheus + Grafana + Loki (local docker-compose stack) |
@@ -35,7 +35,7 @@ packages/
   database/       # Prisma client, DatabaseModule, DatabaseService, migrations, seeders
   shared/         # Global NestJS infrastructure (SharedModule, guards, interceptors, publishers, queue, health, metrics)
   shared-types/   # Zod v4 schemas + zodValidator() shared between frontend and backend
-  mail/           # MailModule (Brevo provider, MongoDB email logging)
+  mail/           # MailModule (Brevo and Resend providers, MongoDB email logging)
   testing-utils/  # Test factories, DB truncation, testcontainers e2e setup
   eslint-config/  # Shared ESLint configurations
   typescript-config/ # Shared tsconfig bases
@@ -75,6 +75,7 @@ The wizard will:
 - Prompt for **PostgreSQL** database name, username, and password
 - Prompt for **MongoDB** database name, username, and password
 - Copy every `.env.example` → `.env` (root and all apps) with the provided credentials substituted in all connection strings
+- Generate `BETTER_AUTH_SECRET` (`apps/auth`) and the two field-encryption keys `FIELD_ENCRYPTION_KEY` / `FIELD_ENCRYPTION_HMAC_KEY` (`apps/api`)
 - Copy `docker/postgres.env.example` → `docker/postgres.env`
 - Copy `docker/mongo.env.example` → `docker/mongo.env`
 
@@ -111,9 +112,9 @@ pnpm dev
 | Auth API                | <http://localhost:3000>      |
 | Auth API Docs (Swagger) | <http://localhost:3000/docs> |
 | API                     | <http://localhost:3100>      |
-| Cron                    | <http://localhost:3200>      |
-| Notifications           | <http://localhost:3300>      |
-| Worker                  | <http://localhost:3400>      |
+| Cron                    | <http://localhost:3400>      |
+| Notifications           | <http://localhost:3200>      |
+| Worker                  | <http://localhost:3300>      |
 | Web (backoffice, `ng serve`) | <http://localhost:4200> |
 | Prometheus              | <http://localhost:9090>      |
 | Grafana                 | <http://localhost:3333>      |
@@ -233,16 +234,20 @@ The `auth` service also exposes a `MESSAGE_PATTERNS.AUTH_AUTHENTICATE` RPC endpo
 
 ### Email Notification Pipeline
 
-All six better-auth lifecycle events trigger email notifications:
+All eight better-auth lifecycle events trigger email notifications:
 
 | Event                               | Email Sent                    |
 | ----------------------------------- | ----------------------------- |
-| `USER_CREATED`                      | Welcome email                 |
+| `USER_CREATED`                      | Welcome email (self sign-up)  |
+| `USER_INVITED`                      | Invitation to set a password (account created by an admin) |
+| `USER_ACCOUNT_ACTIVATED`            | Account activated (first password set) |
 | `USER_PASSWORD_RESET_REQUESTED`     | Password reset                |
 | `USER_PASSWORD_CHANGED`             | Password changed confirmation |
 | `USER_EMAIL_VERIFICATION_REQUESTED` | Email verification            |
 | `USER_TWO_FACTOR_ENABLED`           | 2FA enabled confirmation      |
 | `USER_TWO_FACTOR_DISABLED`          | 2FA disabled confirmation     |
+
+An administrator never sees or sets a new user's password: creating a user emails them an invitation (a single-use `/reset-password` link, valid one hour) and setting the first password activates the account. A reset requested for an account that never set a password re-sends the invitation.
 
 ## Environment Variables
 
@@ -262,6 +267,7 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=change-me
 METRICS_TOKEN=
 SENTRY_DSN=
+AUDIT_RETENTION_DAYS=365
 ```
 
 ### `apps/api/.env`
@@ -275,12 +281,23 @@ MONGO_URI=mongodb://nestjs:change-me@localhost:27017/nestjs?authSource=admin
 CORS_ORIGIN=http://localhost:3000
 METRICS_TOKEN=
 SENTRY_DSN=
+FIELD_ENCRYPTION_KEY=<base64, 32 bytes>
+FIELD_ENCRYPTION_HMAC_KEY=<base64>
+AUDIT_RETENTION_DAYS=365
 ```
+
+`AUDIT_RETENTION_DAYS` (optional, default `365`; on `apps/auth` and `apps/api`) is how many days an [audit event](#audit-log) is kept. Each event stores its own expiry, so changing the value only affects events recorded afterwards; existing events keep the expiry they were given.
+
+`FIELD_ENCRYPTION_KEY` (AES-256-GCM) and `FIELD_ENCRYPTION_HMAC_KEY` (blind index) protect PII columns at rest, such as the customer NIF. Both are required: the API refuses to boot without them, or when the encryption key does not decode to 32 bytes. `pnpm setup` generates them. To generate one by hand: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+
+> **Back the keys up.** Losing or changing either key makes the stored values unreadable (encryption key) or unsearchable and no longer unique (HMAC key). Key rotation is not supported.
+>
+> When you add a new PII field, also append its key name to `SENSITIVE_KEYS` in `packages/shared/src/utils/sanitize.util.ts` and its `req.body.*` path to `redact.paths` in `packages/shared/src/logging/pino.config.ts`, so its plaintext never reaches the request logs.
 
 ### `apps/cron/.env`
 
 ```env
-PORT=3200
+PORT=3400
 DATABASE_URL=postgresql://nestjs:change-me@localhost:5432/nestjs
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -293,7 +310,7 @@ SENTRY_DSN=
 ### `apps/notifications/.env`
 
 ```env
-PORT=3300
+PORT=3200
 DATABASE_URL=postgresql://nestjs:change-me@localhost:5432/nestjs
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -306,13 +323,15 @@ SENTRY_DSN=
 ### `apps/worker/.env`
 
 ```env
-PORT=3400
+PORT=3300
 DATABASE_URL=postgresql://nestjs:change-me@localhost:5432/nestjs
 REDIS_HOST=localhost
 REDIS_PORT=6379
 MONGO_URI=mongodb://nestjs:change-me@localhost:27017/nestjs?authSource=admin
 CORS_ORIGIN=http://localhost:8080
+MAIL_PROVIDER=brevo # or resend; only the active provider's key is required
 BREVO_API_KEY=your-brevo-api-key
+# RESEND_API_KEY=re_...
 FROM_EMAIL=no-reply@example.com
 FROM_NAME=My App
 DEV_EMAIL=dev@example.com
@@ -338,7 +357,11 @@ export const environment = {
 
 The frontend's own API is always the relative `/api` prefix, proxied same-origin (`apps/web/proxy.conf.json` in dev, nginx in production) — never a configured host.
 
-`METRICS_TOKEN` and `SENTRY_DSN` are optional on every NestJS app — leave them empty to disable auth on the metrics endpoint / disable Sentry.
+`SENTRY_DSN` is optional on every NestJS app — leave it empty to disable Sentry. `METRICS_TOKEN` may be left empty outside production (the metrics endpoint is then open), but in production an empty token makes `/api/metrics` refuse every request.
+
+### PWA
+
+The web app is installable (`apps/web/public/manifest.webmanifest`) and, in production builds only, registers an Angular service worker that caches the static shell so it still loads after a brief loss of connectivity. API data (`/api/**`) is never cached, and a navigation to an `/api/` path reaches the server instead of receiving `index.html`. To brand it, replace the placeholder files in `apps/web/public/icons/` (same names and sizes) and edit `name`, `short_name` and `theme_color` in the manifest. The web server must serve `ngsw-worker.js` and `ngsw.json` with `Cache-Control: no-cache` (see [DEPLOY.md](DEPLOY.md)).
 
 ## Internal Packages
 
@@ -377,9 +400,9 @@ import {
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SERVICES`         | `AUTH`, `NOTIFICATIONS`                                                                                                                                                              |
 | `QUEUES`           | `EMAIL: 'email-queue'`, `EMAIL_DLQ: 'email-queue-dlq'`                                                                                                                               |
-| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`                 |
+| `EVENT_PATTERNS`   | `USER_CREATED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_PASSWORD_CHANGED`, `USER_EMAIL_VERIFICATION_REQUESTED`, `USER_TWO_FACTOR_ENABLED`, `USER_TWO_FACTOR_DISABLED`, `USER_INVITED`, `USER_ACCOUNT_ACTIVATED`                 |
 | `MESSAGE_PATTERNS` | `AUTH_AUTHENTICATE`                                                                                                                                                                  |
-| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL` |
+| `JOB_PATTERNS`     | `SEND_WELCOME_EMAIL`, `SEND_PASSWORD_RESET_EMAIL`, `SEND_PASSWORD_CHANGED_EMAIL`, `SEND_EMAIL_VERIFICATION_EMAIL`, `SEND_TWO_FACTOR_ENABLED_EMAIL`, `SEND_TWO_FACTOR_DISABLED_EMAIL`, `SEND_ACCOUNT_INVITATION_EMAIL`, `SEND_ACCOUNT_ACTIVATED_EMAIL` |
 
 ### `@repo/database`
 
@@ -402,7 +425,43 @@ import {
 
 ### `@repo/mail`
 
-Email delivery via Brevo. Configure with `MailModule.forRootAsync()`. Logs all sent emails to MongoDB (`EmailLog`) with a 30-day TTL.
+Email delivery via Brevo (default) or Resend, chosen with `MAIL_PROVIDER`. Configure with `MailModule.forRootAsync()`. Logs all sent emails to MongoDB (`EmailLog`) with a 30-day TTL.
+
+## Audit log
+
+Authentication, account-management and customer write actions are recorded in an append-only MongoDB collection (`audit_events`), separate from the HTTP request `Log`. Admins read it on the `/audit` page (`GET /api/v1/audit-events`), filtering by action, outcome, actor (email or id), target and dates. An email also finds the failed sign-ins that tried it.
+
+- **What is recorded:** `apps/auth` records every audited better-auth route (sign-in/up/out, password and email changes, 2FA, session revocation, and the admin user actions: create, update, remove, ban, unban, role, password, impersonate), on success **and** on failure. `apps/api` records the writes marked with `@Audit`. Reads are never recorded.
+- **What an event holds:** actor (and the real admin during an impersonation), action, target, outcome with error code, changed **field names**, values only for `role`, `banned`, `banReason` and `banExpires`, IP, user agent and the request's correlation ID. Passwords, tokens, codes, NIFs and email values are never stored. A **failed** action records no changed fields or values, since nothing changed. A failed sign-in keeps the attempted email.
+- **Best-effort:** if an event cannot be stored the audited action is not affected; the failure goes to the log and Sentry. In `apps/auth` a response waits at most 2 s for its event (`AUDIT_HOOK_MAX_WAIT_MS`), so an unreachable Mongo cannot stall sign-ins.
+- **Bounded:** every field a client controls is truncated before storing (emails 254 characters, user agent 256, at most 50 changed-field names of 64, change values 500), so no request can store a large event.
+- **Client address:** the entry the trusted proxy appended to `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`, 1 for the documented nginx topology, same rule as Express `trust proxy`); the first entry is client-supplied and is never used, and a value that is not an IP address is dropped instead of stored. Behind two proxies, raise `TRUSTED_PROXY_HOPS` in `packages/shared/src/constants/proxy.ts`.
+- **Retention:** `AUDIT_RETENTION_DAYS` (default 365). Events cannot be edited or deleted through the API; they only expire.
+- **Not an audit trail:** the HTTP request `Log` (30 days) is a debugging aid. It does not see better-auth routes or requests rejected by guards.
+
+To audit a new write in `apps/api`, decorate the handler with `@Audit('<action>', { targetType, fields })` (the action must exist in `AUDIT_ACTIONS` in `@repo/shared-types`). To audit another better-auth endpoint, add its path to `AUTH_AUDIT_PATHS` in `apps/auth/src/audit/auth-audit.ts`.
+
+## Reference slice: Customers
+
+`Customer` is a small end-to-end example that shows how to build a business resource with this template's conventions. Copy it as the starting point for your own resources, or delete it (steps below).
+
+| Layer | Where | Demonstrates |
+| --- | --- | --- |
+| Schema | `packages/database/prisma/schema.prisma` (`Customer`), migration `*_add_customer` | `cuid` id, timestamps, soft delete (`deletedAt`), index for the default listing, a **partial unique index** (`partialIndexes` preview) so a deleted row frees its NIF |
+| Contract | `packages/shared-types/src/schemas/customer.schema.ts` | Request/response/list-query schemas shared by API and web, a `sortBy` allow-list, NIF normalization and mod-11 validation |
+| API | `apps/api/src/customers/` → `/api/v1/customers` | `createZodDto` DTOs, `@ZodSerializerDto` responses, `@Roles(ADMIN)` on writes only, P2002 → 409, NIF encrypted with `EncryptionService` and blind-indexed for exact search |
+| Web | `apps/web/src/app/features/customers/` → `/customers` | `injectQuery` list with debounced search and paging, network-boundary parsing, one Material dialog for create/edit, 409 shown on the NIF field, write controls for admins only |
+| Tests | `*.spec.ts` next to each file, `apps/api/test/customers.integration.ts` | Unit tests per layer plus a Testcontainers integration suite covering 401/403, uniqueness under concurrency, soft delete, search and log redaction |
+
+### Removing it
+
+1. Delete `apps/api/src/customers/`, then remove the `CustomersModule` import from `apps/api/src/app.module.ts`.
+2. Delete `apps/api/test/customers.integration.ts` (keep the harness if you want integration tests).
+3. Delete `apps/web/src/app/features/customers/`, the `customers` route in `apps/web/src/app/app.routes.ts` and the `Customers` entry in `apps/web/src/app/shell/shell.ts`. If you no longer call `apps/api` from the web app, also drop `provideHttpClient` from `apps/web/src/app/app.config.ts`.
+4. Delete `packages/shared-types/src/schemas/customer.schema.ts` and its spec, plus the export in `packages/shared-types/src/schemas/index.ts`.
+5. Delete `packages/testing-utils/src/factories/customer.factory.ts`, its exports in `packages/testing-utils/src/factories/index.ts` and `packages/testing-utils/src/index.ts`, and the `customer` line in `packages/testing-utils/src/helpers/truncate.ts`.
+6. Remove the `Customer` model (and the `partialIndexes` preview flag if nothing else uses it) from `packages/database/prisma/schema.prisma`. On a fresh project with no applied migrations, delete the `packages/database/prisma/migrations/*_add_customer/` folder. Otherwise run `pnpm db:migrate --name drop_customer`.
+7. Keep `FIELD_ENCRYPTION_KEY` / `FIELD_ENCRYPTION_HMAC_KEY` and the `taxid` redaction key if you store other PII. Otherwise remove them from `apps/api/src/env.ts`, `apps/api/.env.example` and `scripts/setup.mjs`.
 
 ## Conventions
 

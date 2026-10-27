@@ -4,6 +4,10 @@ context: |
   ## Domain
   Generic SaaS admin dashboard / starter template built as a Turborepo + pnpm monorepo.
 
+  ## Process Rules
+  - Never invent functionality. If behaviour is not decided in the requirements, a design.md or a closed question, the spec marks it as BLOCKED and does not specify it.
+  - Spec Driven Development is mandatory: spec → tests → production code, in this order.
+
   ## Workspace Structure
   apps/
     api/           # NestJS 11 — REST HTTP gateway for the frontend's own backend
@@ -58,6 +62,7 @@ context: |
 
 rules:
   proposal:
+    - "List every open question the change depends on; behaviour that depends on an open question is marked BLOCKED, never specified"
     - Include a "Non-goals" section to define explicit scope boundaries
     - Include a "Risks & Mitigations" section for non-trivial changes
     - Include an "Alternatives considered" section when multiple approaches exist
@@ -73,8 +78,8 @@ rules:
   tasks:
     - Each task should be scoped to ~1–2 hours of work (one feature slice)
     - 'Prefix each task description with the target path (e.g., "apps/auth: ..." or "packages/database: ...")'
-    - Always include explicit test-writing tasks (unit and/or integration) after each feature task
+    - "SDD: every feature task is preceded by its test-writing task (unit and/or integration). Tests are written and reviewed before production code, never after"
     - Use conventional commit format in task titles (feat:, fix:, chore:, refactor:, test:)
     - Order tasks so dependencies come first (migrations before services, services before controllers)
-    - Group related tasks under a heading, and close every group with a final task that commits that group's work using the project `commit` skill (`/commit`) — it gate-checks build, lint, check-types and tests, then waits for user approval before committing
+    - Group related tasks under a heading, and close every group with a final task that commits that group's work using the `commit` skill (`/commit`) — it gate-checks build, lint, check-types and tests, then waits for user approval before committing
     - Include a final task for end-to-end smoke testing or integration verification

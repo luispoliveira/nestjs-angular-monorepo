@@ -50,6 +50,9 @@ $ pnpm run start:prod
 # unit tests
 $ pnpm run test
 
+# integration tests (queue dashboard; needs Docker for the throwaway Redis/Postgres/Mongo)
+$ pnpm run test:integration
+
 # e2e tests
 $ pnpm run test:e2e
 
@@ -87,7 +90,7 @@ Check out a few resources that may come in handy when working with NestJS:
 
 ### Prometheus Metrics
 
-The worker exposes metrics at `GET /api/metrics` (scraped by Prometheus; distinguished from other apps by port `3400`, not by path).
+The worker exposes metrics at `GET /api/metrics` (scraped by Prometheus; distinguished from other apps by port `3300`, not by path).
 
 Key metrics:
 
@@ -112,10 +115,21 @@ groups:
           severity: warning
         annotations:
           summary: 'BullMQ DLQ has stranded jobs'
-          description: 'Queue {{ $labels.queue }} has {{ $value }} job(s) in the DLQ for over 5 minutes.'
+          description: 'Queue {{ $labels.queue }} has {{ $value }} job(s) in the DLQ for over 5 minutes. Inspect them in the queue dashboard at /admin/queues.'
 ```
 
 The `queue=~".*-dlq"` wildcard covers all present and future DLQ queues.
+
+### Queue dashboard (Bull Board)
+
+A read-only view of `email-queue` and `email-queue-dlq` is served at `/admin/queues` (outside the `api` prefix).
+
+- **Access:** admins only. No session or a rejected one → `401`; a signed-in non-admin → `403`; the auth service not answering → `503` (try again, don't sign out). The session is the same cookie or bearer token the other services use.
+- **Read-only:** every write the dashboard knows (retry, remove, clean, pause, promote, edit, add) answers `405` and changes nothing. To replay or purge DLQ jobs use the `DLQ_REPLAY` / `DLQ_PURGE` message patterns; the dashboard's own retry would re-run a job inside the consumer-less DLQ, or duplicate one already copied there.
+- **Account links are hidden:** `resetLink` and `verificationLink` show as `[redacted]`. The job in Redis is untouched, so a replayed job still carries the real link. `failedReason` and the stack trace are shown as stored.
+- **Not audited:** with no writes there is nothing to record.
+
+When a job input gains another link field, add it to `REDACTED_JOB_DATA_FIELDS` (`packages/shared/src/queue/input/redact-job-data.ts`); its spec fails otherwise.
 
 ## Support
 

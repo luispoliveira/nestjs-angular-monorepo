@@ -83,7 +83,7 @@ Step 1: Guard — apps/auth/src/app.module.ts:42
 
 Step 2: Pipe — packages/shared/src/modules/shared.module.ts
   ZodValidationPipe validates SignInDto
-  → Fails? 422 ZodValidationException
+  → Fails? 400 ZodValidationException
 
 Step 3: Controller — apps/auth/src/auth.controller.ts:15
   better-auth handles sign-in via mount handler

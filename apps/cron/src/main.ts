@@ -12,7 +12,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT') || 3200;
+  const port = configService.get<number>('PORT') || 3400;
   const environment = configService.get<EnvironmentEnum>(
     'NODE_ENV',
     EnvironmentEnum.DEVELOPMENT,

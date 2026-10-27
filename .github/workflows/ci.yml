@@ -16,19 +16,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.33.0
+          version: 10.34.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Cache Turborepo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
@@ -37,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check Node version declarations
+        run: node --test scripts/node-version.test.cjs
 
       - name: Generate Prisma client
         run: pnpm db:generate
@@ -52,6 +55,16 @@ jobs:
 
       - name: Test
         run: pnpm test
+        # apps/api's app.module.spec.ts validates env at import time; locally
+        # that comes from the untracked .env. Dummy values, never used to connect.
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          REDIS_HOST: localhost
+          MONGO_URI: mongodb://localhost:27017/ci
+          CORS_ORIGIN: http://localhost:3000
+          FIELD_ENCRYPTION_KEY: ci-placeholder
+          FIELD_ENCRYPTION_HMAC_KEY: ci-placeholder
+          VAPID_PUBLIC_KEY: ci-placeholder
 
   # ── Deploy skeleton ────────────────────────────────────────────────────────
   # Uncomment and customise one of the variants below when you have a deploy
@@ -65,7 +78,7 @@ jobs:
   #   environment: production
   #
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #
   #     # ── PM2 on a VPS (see DEPLOY-PM2.md) ──────────────────────────────
   #     # - uses: appleboy/ssh-action@v1

@@ -14,6 +14,8 @@ describe('AppController', () => {
       sendPasswordChangeConfirmation: jest.fn().mockResolvedValue(undefined),
       sendTwoFactorEnabledNotification: jest.fn().mockResolvedValue(undefined),
       sendTwoFactorDisabledNotification: jest.fn().mockResolvedValue(undefined),
+      sendAccountInvitationNotification: jest.fn().mockResolvedValue(undefined),
+      sendAccountActivatedNotification: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AppService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -103,6 +105,47 @@ describe('AppController', () => {
       });
 
       expect(service.sendTwoFactorDisabledNotification).toHaveBeenCalledWith(
+        'user@example.com',
+      );
+    });
+  });
+
+  describe('sendAccountInvitationNotification()', () => {
+    it('should call service with email and invitationLink', () => {
+      controller.sendAccountInvitationNotification({
+        userId: 'user-1',
+        email: 'user@example.com',
+        invitationLink: 'https://app.test/reset-password?token=t',
+        expiresAt: new Date().toISOString(),
+      });
+
+      expect(service.sendAccountInvitationNotification).toHaveBeenCalledWith(
+        'user@example.com',
+        'https://app.test/reset-password?token=t',
+      );
+    });
+
+    it('should reject a payload whose invitationLink is not a URL', () => {
+      expect(() =>
+        controller.sendAccountInvitationNotification({
+          userId: 'user-1',
+          email: 'user@example.com',
+          invitationLink: 'nope',
+          expiresAt: new Date().toISOString(),
+        }),
+      ).toThrow();
+      expect(service.sendAccountInvitationNotification).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sendAccountActivatedNotification()', () => {
+    it('should call service with email', () => {
+      controller.sendAccountActivatedNotification({
+        userId: 'user-1',
+        email: 'user@example.com',
+      });
+
+      expect(service.sendAccountActivatedNotification).toHaveBeenCalledWith(
         'user@example.com',
       );
     });

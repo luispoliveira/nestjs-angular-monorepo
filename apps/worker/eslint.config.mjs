@@ -25,7 +25,10 @@ export default tseslint.config(
       },
       sourceType: 'commonjs',
       parserOptions: {
-        projectService: true,
+        projectService: {
+          // test/ files are outside src tsconfig; let project service handle them with defaults
+          allowDefaultProject: ['test/*.ts'],
+        },
         tsconfigRootDir: __dirname,
       },
     },
@@ -62,6 +65,16 @@ export default tseslint.config(
     files: ['**/*.module.ts'],
     rules: {
       'turbo/no-undeclared-env-vars': 'off',
+    },
+  },
+  {
+    // NestJS app.getHttpServer() and supertest's res.body are any — standard e2e pattern
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
     },
   },
 );

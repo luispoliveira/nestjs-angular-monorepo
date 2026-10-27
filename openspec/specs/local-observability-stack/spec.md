@@ -20,7 +20,7 @@ The `docker-compose.yaml` SHALL include a Prometheus service (`prom/prometheus`)
 #### Scenario: All app scrape targets are configured
 
 - **WHEN** the Prometheus UI target list is viewed
-- **THEN** scrape targets exist for `auth` (port 3000), `api` (port 3100), `cron` (port 3200), `notifications` (port 3300), and `worker` (port 3400)
+- **THEN** scrape targets exist for `auth` (port 3000), `api` (port 3100), `notifications` (port 3200), `worker` (port 3300), and `cron` (port 3400)
 
 ---
 

@@ -10,6 +10,7 @@ import { RoleEnum } from '@repo/shared-types';
 import { AUTH_CLIENT } from '../auth/auth-client.token';
 import { SessionService } from '../auth/session.service';
 import { ThemeService } from '../theme/theme.service';
+import { PushService } from '../push/push.service';
 
 interface NavEntry {
   label: string;
@@ -25,8 +26,20 @@ interface NavGroup {
 
 /** Groups mirror the reference admin template's sidebar ("Main" / "System" sections). */
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Main', entries: [{ label: 'Dashboard', path: '/dashboard', icon: 'space_dashboard', adminOnly: false }] },
-  { label: 'System', entries: [{ label: 'Users', path: '/users', icon: 'group', adminOnly: true }] },
+  {
+    label: 'Main',
+    entries: [
+      { label: 'Dashboard', path: '/dashboard', icon: 'space_dashboard', adminOnly: false },
+      { label: 'Customers', path: '/customers', icon: 'contacts', adminOnly: false },
+    ],
+  },
+  {
+    label: 'System',
+    entries: [
+      { label: 'Users', path: '/users', icon: 'group', adminOnly: true },
+      { label: 'Audit log', path: '/audit', icon: 'policy', adminOnly: true },
+    ],
+  },
 ];
 
 /**
@@ -55,6 +68,7 @@ export class Shell {
   private readonly session = inject(SessionService);
   private readonly authClient = inject(AUTH_CLIENT);
   private readonly router = inject(Router);
+  private readonly push = inject(PushService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly userName = computed(() => this.session.user()?.name ?? this.session.user()?.email ?? '');
@@ -76,6 +90,9 @@ export class Shell {
   protected readonly impersonatedUserLabel = computed(() => this.session.user()?.name ?? this.session.user()?.email ?? '');
 
   protected async signOut(): Promise<void> {
+    // First, while the session cookie is still valid: the next person to use
+    // this browser must not receive this user's notifications. Never rejects.
+    await this.push.removeCurrentOnSignOut();
     await this.authClient.signOut();
     await this.session.signedOut();
     await this.router.navigateByUrl('/sign-in');

@@ -1,0 +1,106 @@
+<div class="flex flex-col gap-4">
+  <h1 class="text-xl font-semibold">Audit log</h1>
+
+  <form [formGroup]="filters" class="flex flex-wrap items-start gap-2">
+    <mat-form-field appearance="outline" class="sm:w-64">
+      <mat-label>Action</mat-label>
+      <mat-select formControlName="action" data-testid="action-filter">
+        <mat-option value="">All actions</mat-option>
+        @for (action of actions; track action) {
+          <mat-option [value]="action">{{ action }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-40">
+      <mat-label>Outcome</mat-label>
+      <mat-select formControlName="outcome" data-testid="outcome-filter">
+        <mat-option value="">All outcomes</mat-option>
+        <mat-option value="success">Success</mat-option>
+        <mat-option value="failure">Failure</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-48">
+      <mat-label>Actor (email or id)</mat-label>
+      <input matInput formControlName="actor" autocomplete="off" data-testid="actor-filter" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-48">
+      <mat-label>Target id</mat-label>
+      <input matInput formControlName="targetId" autocomplete="off" data-testid="target-filter" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sm:w-72">
+      <mat-label>Date range</mat-label>
+      <mat-date-range-input [rangePicker]="picker" formGroupName="range">
+        <input matStartDate formControlName="start" placeholder="From" data-testid="from-filter" />
+        <input matEndDate formControlName="end" placeholder="To" data-testid="to-filter" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker />
+    </mat-form-field>
+
+    <button mat-button type="button" class="mt-2" (click)="clearFilters()" data-testid="clear-filters">Clear</button>
+  </form>
+
+  @if (eventsQuery.isPending()) {
+    <mat-spinner diameter="32" data-testid="audit-loading" />
+  } @else if (eventsQuery.isError()) {
+    <p role="alert" data-testid="audit-error">Failed to load the audit log.</p>
+  } @else {
+    <mat-card class="overflow-hidden">
+      <table mat-table [dataSource]="events()" class="w-full">
+        <ng-container matColumnDef="occurredAt">
+          <th mat-header-cell *matHeaderCellDef>Time</th>
+          <td mat-cell *matCellDef="let event" class="whitespace-nowrap">{{ event.occurredAt | date: 'medium' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actor">
+          <th mat-header-cell *matHeaderCellDef>Actor</th>
+          <td mat-cell *matCellDef="let event" [attr.title]="event.actorId ?? null">
+            {{ event.actorEmail ?? event.attemptedEmail ?? event.actorId ?? '—' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="impersonatedBy">
+          <th mat-header-cell *matHeaderCellDef>Impersonated by</th>
+          <td mat-cell *matCellDef="let event">{{ event.impersonatedById ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="action">
+          <th mat-header-cell *matHeaderCellDef>Action</th>
+          <td mat-cell *matCellDef="let event">{{ event.action }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="target">
+          <th mat-header-cell *matHeaderCellDef>Target</th>
+          <td mat-cell *matCellDef="let event">{{ event.targetId ? event.targetType + ': ' + event.targetId : '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="outcome">
+          <th mat-header-cell *matHeaderCellDef>Outcome</th>
+          <td mat-cell *matCellDef="let event" class="break-all" [class.text-red-700]="event.outcome === 'failure'">
+            {{ event.outcome }}@if (event.errorCode) {
+              <span class="text-sm"> ({{ event.errorCode }})</span>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" [attr.data-testid]="'audit-row-' + row.id"></tr>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell p-4" [attr.colspan]="displayedColumns.length">No events found.</td>
+        </tr>
+      </table>
+
+      <mat-paginator
+        [length]="total()"
+        [pageSize]="pageSize"
+        [pageIndex]="page()"
+        [hidePageSize]="true"
+        (page)="onPage($event)"
+      />
+    </mat-card>
+  }
+</div>

@@ -2,6 +2,7 @@ import { EnvironmentEnum } from '@repo/shared-types';
 import { IncomingMessage } from 'http';
 import { Params } from 'nestjs-pino';
 import { isSilentPath } from '../constants/observability';
+import { SanitizeUtil } from '../utils/sanitize.util';
 
 const isProduction = process.env.NODE_ENV === EnvironmentEnum.PRODUCTION;
 
@@ -75,7 +76,7 @@ export const pinoConfig: Params = {
         return {
           id: req.id,
           method: req.method,
-          url: req.url,
+          url: SanitizeUtil.sanitizeUrl(req.url),
           remoteAddress: req.remoteAddress,
           remotePort: req.remotePort,
         };
@@ -97,6 +98,7 @@ export const pinoConfig: Params = {
         'req.body.password',
         'req.body.currentPassword',
         'req.body.newPassword',
+        'req.body.taxId',
         'res.headers["set-cookie"]',
       ],
       censor: '[REDACTED]',

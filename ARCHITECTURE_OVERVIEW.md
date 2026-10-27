@@ -37,10 +37,10 @@ See also: [PROJECT_MAP.md](PROJECT_MAP.md) | [ENTRYPOINTS.md](ENTRYPOINTS.md) | 
     Redis    │                 BullMQ │ email-queue
     events   │               ┌────────▼──────────┐
              │               │  apps/worker      │
-    ┌────────▼───────┐        │  :3400            │
+    ┌────────▼───────┐        │  :3300            │
     │ apps/notif-    │        │  EmailConsumer    │
     │ ications       │        │  DLQ: email-queue-dlq │
-    │ :3300/api      │        └────────┬──────────┘
+    │ :3200/api      │        └────────┬──────────┘
     └────────────────┘                 │ SMTP
                                 ┌───────▼───────┐
                                 │  Brevo (mail) │
@@ -49,7 +49,7 @@ See also: [PROJECT_MAP.md](PROJECT_MAP.md) | [ENTRYPOINTS.md](ENTRYPOINTS.md) | 
           │ BullMQ enqueue (email-queue)
           └──────────────────────────────►  apps/worker
 
-  apps/cron :3200 — not shown above; runs @nestjs/schedule jobs on a timer,
+  apps/cron :3400 — not shown above; runs @nestjs/schedule jobs on a timer,
   no inbound HTTP/Redis traffic in the request path (health/metrics only).
 ```
 
@@ -71,9 +71,9 @@ and read via `ConfigService.getOrThrow<number>('PORT')` in `main.ts`.
 | --------------------- | ------ | ------------------------------------------------------ |
 | `apps/auth`          | `3000` | HTTP (`/api/auth/*`) + Redis microservice             |
 | `apps/api`           | `3100` | HTTP (`/api/*` — REST)                                |
-| `apps/cron`          | `3200` | HTTP (health/metrics/docs only) — no Redis            |
-| `apps/notifications` | `3300` | HTTP (health/metrics/docs only) + Redis microservice  |
-| `apps/worker`        | `3400` | HTTP (health/metrics/docs only) + Redis microservice  |
+| `apps/cron`          | `3400` | HTTP (health/metrics/docs only) — no Redis            |
+| `apps/notifications` | `3200` | HTTP (health/metrics/docs only) + Redis microservice  |
+| `apps/worker`        | `3300` | HTTP (health/metrics/docs only) + Redis microservice  |
 | `apps/web`           | `4200` (dev, `ng serve`) / `8080` (prod, Nginx) | HTTP (Angular static build in prod) |
 
 ---
@@ -102,9 +102,9 @@ requirements: `openspec/specs/local-observability-stack/spec.md`.
 ┌───────────────┐   scrape /api/metrics    ┌───────────────────────┐
 │  Prometheus    │◄─────────────────────────┤  auth          :3000  │
 │  :9090         │◄─────────────────────────┤  api           :3100  │
-│  (container)   │◄─────────────────────────┤  cron          :3200  │
-│                │◄─────────────────────────┤  notifications :3300  │
-│                │◄─────────────────────────┤  worker        :3400  │
+│  (container)   │◄─────────────────────────┤  cron          :3400  │
+│                │◄─────────────────────────┤  notifications :3200  │
+│                │◄─────────────────────────┤  worker        :3300  │
 └───────┬────────┘   via host.docker.internal └───────────────────────┘
         │ datasource (provisioned)
         ▼
@@ -141,7 +141,7 @@ requirements: `openspec/specs/local-observability-stack/spec.md`.
 
 | Provider                   | Type              | Role                                                            |
 | -------------------------- | ----------------- | --------------------------------------------------------------- |
-| `AllExceptionFilter`       | `APP_FILTER`      | Normalised error responses; Sentry capture for 5xx; 422 for Zod |
+| `AllExceptionFilter`       | `APP_FILTER`      | Normalised error responses; Sentry capture for 5xx; 400 for Zod |
 | `LoggingInterceptor`       | `APP_INTERCEPTOR` | Logs HTTP req/res to MongoDB                                    |
 | `CorrelationInterceptor`   | `APP_INTERCEPTOR` | Threads `correlationId` from RPC payloads into CLS              |
 | `ZodValidationPipe`        | `APP_PIPE`        | Request body validation                                         |

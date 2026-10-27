@@ -23,7 +23,15 @@ export class AuthController {
         throw new RpcException({ status: 401, message: 'Unauthorized' });
       }
 
-      return session.user;
+      // `request.user` in apps/api is this reply. Add the real admin for an
+      // impersonation session so audit events can name them; every other
+      // session gets exactly the reply it always did.
+      const impersonatedBy = (
+        session.session as { impersonatedBy?: string | null } | undefined
+      )?.impersonatedBy;
+      return impersonatedBy
+        ? { ...session.user, impersonatedBy }
+        : session.user;
     } catch (error) {
       if (error instanceof RpcException) throw error;
       this.logger.error('Session validation failed', error);

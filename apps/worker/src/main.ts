@@ -7,6 +7,7 @@ import { BootstrapUtil } from '@repo/shared';
 import { EnvironmentEnum } from '@repo/shared-types';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { workerBootstrapConfig } from './bootstrap.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,32 +25,19 @@ async function bootstrap() {
     },
   });
 
-  const port = configService.get<number>('PORT') || 3400;
+  const port = configService.get<number>('PORT') || 3300;
   const environment = configService.get<EnvironmentEnum>(
     'NODE_ENV',
     EnvironmentEnum.DEVELOPMENT,
   );
 
-  BootstrapUtil.setup(app, {
-    globalPrefix: 'api',
-    useHelmet: true,
-    enableVersioning: true,
-    swagger:
-      environment !== EnvironmentEnum.PRODUCTION
-        ? {
-            title: 'Worker API',
-            description: 'API for managing worker tasks',
-            version: '1.0.0',
-            tag: 'worker',
-            path: 'docs',
-          }
-        : undefined,
-    cors: {
-      origin: configService.getOrThrow<string>('CORS_ORIGIN'),
-      credentials: true,
-    },
-    enableCookieParser: true,
-  });
+  BootstrapUtil.setup(
+    app,
+    workerBootstrapConfig({
+      environment,
+      corsOrigin: configService.getOrThrow<string>('CORS_ORIGIN'),
+    }),
+  );
 
   app.enableShutdownHooks();
   await app.startAllMicroservices();

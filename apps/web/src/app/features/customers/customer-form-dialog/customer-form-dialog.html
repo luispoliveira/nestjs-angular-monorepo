@@ -1,0 +1,42 @@
+<h2 mat-dialog-title>{{ customer ? 'Edit customer' : 'New customer' }}</h2>
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <mat-dialog-content class="flex flex-col gap-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" data-testid="name-input" />
+      @if (form.controls.name.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" data-testid="email-input" />
+      @if (form.controls.email.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>NIF</mat-label>
+      <input matInput formControlName="taxId" autocomplete="off" data-testid="taxid-input" />
+      @if (form.controls.taxId.errors?.['zod'] ?? form.controls.taxId.errors?.['conflict']; as message) {
+        <mat-error data-testid="taxid-error">{{ message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Notes</mat-label>
+      <textarea matInput rows="3" formControlName="notes" data-testid="notes-input"></textarea>
+      @if (form.controls.notes.errors?.['zod']; as message) {
+        <mat-error>{{ message }}</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="close()" [disabled]="saving()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="saving()" data-testid="submit-button">
+      {{ saving() ? 'Saving…' : customer ? 'Save' : 'Create customer' }}
+    </button>
+  </mat-dialog-actions>
+</form>

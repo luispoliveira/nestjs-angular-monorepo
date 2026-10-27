@@ -1,4 +1,10 @@
-## ADDED Requirements
+# github-release Specification
+
+## Purpose
+
+Publishes a GitHub release with notes generated from Conventional Commits and keeps CHANGELOG.md up to date whenever a version tag is pushed.
+
+## Requirements
 
 ### Requirement: Release workflow triggers on version tag
 O sistema SHALL criar automaticamente uma GitHub Release sempre que um tag semver (`v*`) é pushed para o repositório.

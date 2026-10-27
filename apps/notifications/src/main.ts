@@ -50,7 +50,7 @@ async function bootstrap() {
     enableCookieParser: true,
   });
 
-  const port = configService.get<number>('PORT') || 3300;
+  const port = configService.get<number>('PORT') || 3200;
 
   app.enableShutdownHooks();
   await app.startAllMicroservices();

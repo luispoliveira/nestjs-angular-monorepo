@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AUTH_CLIENT } from '../../auth/auth-client.token';
+import { SessionService } from '../../auth/session.service';
 import { SignIn } from './sign-in';
 
 @Component({ selector: 'app-dashboard-stub', template: 'dashboard page' })
@@ -19,6 +20,7 @@ function setUp(
   overrides: {
     sendVerificationEmail?: (args: unknown) => Promise<unknown>;
     requestPasswordReset?: (args: unknown) => Promise<unknown>;
+    signedIn?: () => Promise<void>;
   } = {},
 ) {
   TestBed.configureTestingModule({
@@ -31,6 +33,7 @@ function setUp(
           requestPasswordReset: overrides.requestPasswordReset ?? vi.fn(),
         },
       },
+      { provide: SessionService, useValue: { signedIn: overrides.signedIn ?? vi.fn().mockResolvedValue(undefined) } },
       provideRouter([
         { path: 'sign-in', component: SignIn },
         { path: 'dashboard', component: DashboardStub },
@@ -64,6 +67,28 @@ describe('SignIn', () => {
     instance['form'].setValue({ email: 'admin@admin.com', password: 'Admin123!' });
     await instance['onSubmit']();
 
+    expect(TestBed.inject(Router).url).toBe('/dashboard');
+  });
+
+  it('waits for the session to reflect the sign-in before navigating to /dashboard', async () => {
+    // better-auth refreshes its session atom in a setTimeout: navigating
+    // straight away lets authGuard read the stale (signed-out) session and
+    // bounce back to /sign-in.
+    let resolveSignedIn: () => void = () => undefined;
+    const signedIn = vi.fn(() => new Promise<void>((resolve) => (resolveSignedIn = resolve)));
+    const signInEmail = vi.fn().mockResolvedValue({ error: null });
+    const harness = await setUp(signInEmail, { signedIn });
+    const instance = harness.routeDebugElement?.componentInstance as SignIn;
+
+    instance['form'].setValue({ email: 'admin@admin.com', password: 'Admin123!' });
+    const submitted = instance['onSubmit']();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(signedIn).toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/sign-in');
+
+    resolveSignedIn();
+    await submitted;
     expect(TestBed.inject(Router).url).toBe('/dashboard');
   });
 

@@ -1,0 +1,82 @@
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Customers</h1>
+    @if (isAdmin()) {
+      <button mat-flat-button type="button" (click)="openForm(null)" data-testid="create-customer">New customer</button>
+    }
+  </div>
+
+  <mat-form-field appearance="outline" class="sm:w-80">
+    <mat-label>Search by name, email or NIF</mat-label>
+    <input matInput [formControl]="searchControl" data-testid="search-input" />
+    <mat-icon matPrefix>search</mat-icon>
+  </mat-form-field>
+
+  @if (customersQuery.isPending()) {
+    <mat-spinner diameter="32" data-testid="customers-loading" />
+  } @else if (customersQuery.isError()) {
+    <p role="alert" data-testid="customers-error">Failed to load customers.</p>
+  } @else {
+    <mat-card class="overflow-hidden">
+      <table mat-table [dataSource]="customers()" class="w-full">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let customer">{{ customer.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let customer">{{ customer.email ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="taxId">
+          <th mat-header-cell *matHeaderCellDef>NIF</th>
+          <td mat-cell *matCellDef="let customer">{{ customer.taxId ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Created</th>
+          <td mat-cell *matCellDef="let customer">{{ customer.createdAt | date: 'mediumDate' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let customer" class="whitespace-nowrap text-right">
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'Edit ' + customer.name"
+              (click)="openForm(customer)"
+              [attr.data-testid]="'edit-customer-' + customer.id"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'Delete ' + customer.name"
+              (click)="delete(customer)"
+              [attr.data-testid]="'delete-customer-' + customer.id"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns()" [attr.data-testid]="'customer-row-' + row.id"></tr>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell p-4" [attr.colspan]="displayedColumns().length">No customers found.</td>
+        </tr>
+      </table>
+
+      <mat-paginator
+        [length]="total()"
+        [pageSize]="pageSize"
+        [pageIndex]="page()"
+        [hidePageSize]="true"
+        (page)="onPage($event)"
+      />
+    </mat-card>
+  }
+</div>

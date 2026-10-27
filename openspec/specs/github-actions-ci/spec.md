@@ -1,3 +1,11 @@
+# github-actions-ci Specification
+
+## Purpose
+
+Runs the monorepo quality gate automatically on pull requests and pushes to main and develop, with dependency and build caching to keep runs fast.
+
+## Requirements
+
 ### Requirement: Workflow triggers on PR and push
 The CI workflow SHALL run automatically on `pull_request` events targeting `main` or `develop`, and on `push` events to `main` or `develop`.
 

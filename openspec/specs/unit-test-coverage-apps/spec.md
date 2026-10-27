@@ -1,8 +1,14 @@
-## ADDED Requirements
+# unit-test-coverage-apps Specification
+
+## Purpose
+
+Sets the minimum unit-test coverage bar for the NestJS apps (auth, notifications, worker) and the behaviours their tests must exercise.
+
+## Requirements
 
 ### Requirement: auth app reaches 80% unit test coverage
 
-The `apps/auth` app SHALL have unit tests covering `LocalAuthService` and `AuthTrpcMiddleware` such that `pnpm test:cov` exits 0 with ≥80% statements, branches, functions, and lines.
+The `apps/auth` app SHALL have unit tests covering `LocalAuthService` such that `pnpm test:cov` exits 0 with ≥80% statements, branches, functions, and lines.
 
 #### Scenario: ensureAdminUser skips creation when admin already exists
 - **WHEN** `LocalAuthService.ensureAdminUser()` is called and `DatabaseService.user.findUnique` returns an existing user
@@ -28,18 +34,6 @@ The `apps/auth` app SHALL have unit tests covering `LocalAuthService` and `AuthT
 #### Scenario: handleTwoFactorDisabled emits notification
 - **WHEN** `LocalAuthService.handleTwoFactorDisabled()` is called with a valid session context
 - **THEN** `notificationsPublisher.emitUserTwoFactorDisabled` is called with user id and email
-
-#### Scenario: AuthTrpcMiddleware passes user into context when session is valid
-- **WHEN** `AuthTrpcMiddleware.use()` is called and `authService.api.getSession` returns a session with user and session objects
-- **THEN** `next()` is called with the original context merged with the user
-
-#### Scenario: AuthTrpcMiddleware throws Unauthorized when session is null
-- **WHEN** `AuthTrpcMiddleware.use()` is called and `authService.api.getSession` returns null
-- **THEN** an Error is thrown with message "Unauthorized"
-
-#### Scenario: AuthTrpcMiddleware throws Unauthorized when getSession throws
-- **WHEN** `AuthTrpcMiddleware.use()` is called and `authService.api.getSession` throws
-- **THEN** an Error is thrown with message "Unauthorized"
 
 ---
 
@@ -107,11 +101,11 @@ The `apps/worker` app SHALL have unit tests covering `DlqController`, `EmailDlqS
 
 #### Scenario: QueueMetricsService.recordDuration observes histogram
 - **WHEN** `QueueMetricsService.recordDuration` is called with a job name and duration in ms
-- **THEN** the prom-client histogram `observe` is called with the correct labels and duration in seconds
+- **THEN** the `@prometheus-io/client` histogram `observe` is called with the correct labels and duration in seconds
 
 #### Scenario: QueueMetricsService.recordFailure increments counter
 - **WHEN** `QueueMetricsService.recordFailure` is called with a job name
-- **THEN** the prom-client counter `inc` is called with the correct labels
+- **THEN** the `@prometheus-io/client` counter `inc` is called with the correct labels
 
 #### Scenario: EmailConsumer processes sendPasswordResetEmail job
 - **WHEN** `EmailConsumer.process()` is called with a job named `JOB_PATTERNS.SEND_PASSWORD_RESET_EMAIL`

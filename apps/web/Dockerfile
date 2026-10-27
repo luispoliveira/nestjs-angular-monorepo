@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.9
 
 # ─── Build stage ────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 
 ENV CI=true
 ENV NODE_ENV=production
@@ -10,10 +10,11 @@ ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /usr/src/app
 
-# Corepack picks up the pnpm version from the root package.json "packageManager" field.
-RUN corepack enable
+# Node 25+ no longer bundles corepack. It picks up the pnpm version from the root package.json "packageManager" field.
+RUN npm install -g corepack@0.36.0 && corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 
 COPY packages/eslint-config/package.json     ./packages/eslint-config/
 COPY packages/shared-types/package.json      ./packages/shared-types/

@@ -1,4 +1,10 @@
-## ADDED Requirements
+# unit-test-infra-packages Specification
+
+## Purpose
+
+Ensures the mail and database packages have a working Jest setup and unit tests covering their core services.
+
+## Requirements
 
 ### Requirement: packages/mail has a working Jest configuration
 

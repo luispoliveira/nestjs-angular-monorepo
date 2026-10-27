@@ -4,16 +4,16 @@ import {
   Inject,
   Injectable,
   Logger,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request } from 'express';
-import { catchError, map, Observable, throwError, timeout } from 'rxjs';
-import { AUTH_RPC_TIMEOUT_MS, MESSAGE_PATTERNS, SERVICES } from '../constants';
+import { map, Observable } from 'rxjs';
+import { SERVICES } from '../constants';
 import { IS_PUBLIC_KEY } from '../decorators';
 import { ContextUtil } from '../utils';
+import { authenticateToken } from './authenticate-token';
 
 @Injectable()
 export class MicroserviceAuthGuard implements CanActivate {
@@ -41,31 +41,11 @@ export class MicroserviceAuthGuard implements CanActivate {
       throw new UnauthorizedException('No authentication token provided');
     }
 
-    return this.authClient
-      .send<Record<string, unknown>>(MESSAGE_PATTERNS.AUTH_AUTHENTICATE, {
-        token,
-      })
-      .pipe(
-        timeout(AUTH_RPC_TIMEOUT_MS),
-        map((user) => {
-          (request as unknown as Record<string, unknown>).user = user;
-          return true;
-        }),
-        catchError((err: unknown) => {
-          // apps/auth rejects every bad token with RpcException({ status: 401 });
-          // anything else (timeout, Redis down) means auth is unavailable, not
-          // that the session is invalid — 503 keeps clients from signing out.
-          if ((err as { status?: number } | null)?.status === 401) {
-            return throwError(
-              () => new UnauthorizedException('Invalid or expired session'),
-            );
-          }
-          this.logger.error('Authentication service unavailable', err);
-          return throwError(
-            () =>
-              new ServiceUnavailableException('Authentication service unavailable'),
-          );
-        }),
-      );
+    return authenticateToken(this.authClient, token, this.logger).pipe(
+      map((user) => {
+        (request as unknown as Record<string, unknown>).user = user;
+        return true;
+      }),
+    );
   }
 }

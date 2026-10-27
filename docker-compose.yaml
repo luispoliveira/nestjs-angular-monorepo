@@ -80,11 +80,52 @@ services:
   #     mode: replicated
   #     replicas: 1
   #   ports:
-  #     - '3300:3300'
+  #     - '3200:3200'
   #   volumes:
   #     - ./apps/notifications/src:/usr/src/app/apps/notifications/src
   #   env_file:
   #     - ./apps/notifications/.env.development
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     mongo:
+  #       condition: service_healthy
+  #   networks:
+  #     - app
+  #   healthcheck:
+  #     test:
+  #       [
+  #         'CMD-SHELL',
+  #         'wget -qO /dev/null http://localhost:3200/api/health/ready || exit 1',
+  #       ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+  #   labels:
+  #     - 'traefik.enable=true'
+  #     - 'traefik.http.routers.notifications.rule=PathPrefix(`/api/notifications`)'
+  #     - 'traefik.http.routers.notifications.entrypoints=web'
+  #     - 'traefik.http.services.notifications.loadbalancer.server.port=3200'
+
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/worker/Dockerfile
+  #     target: development
+  #   command: turbo dev --filter=worker
+  #   restart: unless-stopped
+  #   deploy:
+  #     mode: replicated
+  #     replicas: 1
+  #   ports:
+  #     - '3300:3300'
+  #   volumes:
+  #     - ./apps/worker/src:/usr/src/app/apps/worker/src
+  #   env_file:
+  #     - ./apps/worker/.env.development
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
@@ -106,50 +147,9 @@ services:
   #     start_period: 30s
   #   labels:
   #     - 'traefik.enable=true'
-  #     - 'traefik.http.routers.notifications.rule=PathPrefix(`/api/notifications`)'
-  #     - 'traefik.http.routers.notifications.entrypoints=web'
-  #     - 'traefik.http.services.notifications.loadbalancer.server.port=3300'
-
-  # worker:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/worker/Dockerfile
-  #     target: development
-  #   command: turbo dev --filter=worker
-  #   restart: unless-stopped
-  #   deploy:
-  #     mode: replicated
-  #     replicas: 1
-  #   ports:
-  #     - '3400:3400'
-  #   volumes:
-  #     - ./apps/worker/src:/usr/src/app/apps/worker/src
-  #   env_file:
-  #     - ./apps/worker/.env.development
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     mongo:
-  #       condition: service_healthy
-  #   networks:
-  #     - app
-  #   healthcheck:
-  #     test:
-  #       [
-  #         'CMD-SHELL',
-  #         'wget -qO /dev/null http://localhost:3400/api/health/ready || exit 1',
-  #       ]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 30s
-  #   labels:
-  #     - 'traefik.enable=true'
   #     - 'traefik.http.routers.worker.rule=PathPrefix(`/api/worker`)'
   #     - 'traefik.http.routers.worker.entrypoints=web'
-  #     - 'traefik.http.services.worker.loadbalancer.server.port=3400'
+  #     - 'traefik.http.services.worker.loadbalancer.server.port=3300'
 
   # web:
   #   build:

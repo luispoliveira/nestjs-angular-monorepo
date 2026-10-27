@@ -47,7 +47,7 @@ Redis against `apps/auth`).
 `AppController` (`apps/api/src/app.controller.ts`) is currently the only
 application controller — add new REST resources here as the app grows.
 
-### `apps/cron` — prefix `/api`, port `3200`
+### `apps/cron` — prefix `/api`, port `3400`
 
 | Method | Path                | Notes              |
 | ------ | ------------------- | ------------------ |
@@ -58,7 +58,7 @@ application controller — add new REST resources here as the app grows.
 Swagger: `/api/docs` (non-production only). No business HTTP routes, no Redis
 microservice transport — see [Scheduled Jobs](#scheduled-jobs-nestjsschedule) below.
 
-### `apps/notifications` — prefix `/api`, port `3300`
+### `apps/notifications` — prefix `/api`, port `3200`
 
 | Method | Path                | Notes              |
 | ------ | ------------------- | ------------------ |
@@ -70,7 +70,7 @@ Swagger: `/api/docs` (non-production only).
 No application HTTP routes — all traffic is via Redis event patterns.
 Apps are distinguished by port, not by path prefix — every app shares the same `/api` prefix.
 
-### `apps/worker` — prefix `/api`, port `3400`
+### `apps/worker` — prefix `/api`, port `3300`
 
 | Method | Path                | Notes              |
 | ------ | ------------------- | ------------------ |

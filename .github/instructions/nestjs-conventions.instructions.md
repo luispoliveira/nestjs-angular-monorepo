@@ -278,6 +278,15 @@ Correlation IDs are automatically propagated by `ClsModule` — no manual thread
 
 HTTP request/response logs are written to MongoDB automatically by `LoggingInterceptor`. Probes are silenced (Mongo log, pino auto-logging and Sentry tracing) by `isSilentPath` from `constants/observability.ts`: any path containing a `/health`, `/metrics` or `/favicon.ico` segment, regardless of global prefix or query string.
 
+## Audit Trail
+
+Writes that matter are recorded in the Mongo `audit_events` collection through `AuditService` (global, from `SharedModule`). It is **not** the request `Log`: that one never sees better-auth routes or requests rejected by guards.
+
+- `apps/api`: decorate a write handler with `@Audit('<action>', { targetType, fields })`. Declare `fields` on update handlers so unknown body keys never appear. `AuditContextGuard` must stay the **first** global `APP_GUARD` (so a 401/403 from a later guard still finds the metadata); `AuditInterceptor` records successes and handler errors.
+- `apps/auth`: add the better-auth path to `AUTH_AUDIT_PATHS` (`src/audit/auth-audit.ts`). `AuthAuditHook` must never throw: an `APIError` thrown from an after hook replaces the real response.
+- Actions live in `AUDIT_ACTIONS` (`@repo/shared-types`). Events store field **names**; values only for `SAFE_CHANGE_FIELDS`.
+- Recording is best-effort: a storage failure is logged and sent to Sentry, never thrown, and `AuthAuditHook` waits at most `AUDIT_HOOK_MAX_WAIT_MS` for the write. Client-controlled fields are truncated centrally in `AuditService` (`AUDIT_LIMITS`). The client address is the `X-Forwarded-For` entry the trusted proxy appended (`ContextUtil.clientIpFromForwardedFor`), never the first one. Retention is `AUDIT_RETENTION_DAYS` (default 365), enforced per document (`expireAt`).
+
 ## Error Handling
 
 `AllExceptionFilter` is registered globally and handles all uncaught exceptions. It returns:
@@ -292,7 +301,7 @@ HTTP request/response logs are written to MongoDB automatically by `LoggingInter
 }
 ```
 
-`ZodValidationException` is handled separately with a 422 status. In services, throw NestJS HTTP exceptions:
+`ZodValidationException` is handled separately with a 400 status and an `errors` array of Zod issues. In services, throw NestJS HTTP exceptions:
 
 ```typescript
 throw new NotFoundException(`User ${id} not found`);

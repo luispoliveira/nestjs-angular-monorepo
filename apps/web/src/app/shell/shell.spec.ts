@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { AUTH_CLIENT, SessionAtomClient } from '../auth/auth-client.token';
+import { PushService } from '../push/push.service';
 import { Shell } from './shell';
 
 type SessionValue = SessionAtomClient['useSession'] extends { get(): infer T } ? T : never;
@@ -46,7 +47,16 @@ function sessionOf(role: 'admin' | 'user', name = 'Ada Lovelace', impersonatedBy
   } as SessionValue;
 }
 
-function setUp(role: 'admin' | 'user', options?: { impersonatedBy?: string; stopImpersonating?: () => Promise<unknown> }) {
+function setUp(
+  role: 'admin' | 'user',
+  options?: {
+    impersonatedBy?: string;
+    stopImpersonating?: () => Promise<unknown>;
+    /** Runs when the client's `signOut` is called, before the session flips to signed-out. */
+    onSignOut?: () => void;
+    removeCurrentOnSignOut?: () => Promise<void>;
+  },
+) {
   const { atom, set } = createFakeSessionAtom(sessionOf(role, undefined, options?.impersonatedBy));
   TestBed.configureTestingModule({
     providers: [
@@ -55,11 +65,16 @@ function setUp(role: 'admin' | 'user', options?: { impersonatedBy?: string; stop
         useValue: {
           useSession: atom,
           signOut: async () => {
+            options?.onSignOut?.();
             set(signedOutValue);
             return {};
           },
           admin: { stopImpersonating: options?.stopImpersonating ?? (async () => ({})) },
         },
+      },
+      {
+        provide: PushService,
+        useValue: { removeCurrentOnSignOut: options?.removeCurrentOnSignOut ?? vi.fn().mockResolvedValue(undefined) },
       },
       provideRouter([]),
     ],
@@ -87,6 +102,7 @@ describe('Shell', () => {
 
     expect(labels).toContain('Dashboard');
     expect(labels).toContain('Users');
+    expect(labels).toContain('Audit log');
   });
 
   it('hides the admin-only nav entry for a non-admin session', () => {
@@ -98,6 +114,7 @@ describe('Shell', () => {
 
     expect(labels).toContain('Dashboard');
     expect(labels).not.toContain('Users');
+    expect(labels).not.toContain('Audit log');
   });
 
   it('does not show the impersonation banner for a normal session', () => {
@@ -146,5 +163,40 @@ describe('Shell', () => {
     fixture.detectChanges();
 
     expect(document.querySelector('[data-testid="my-account-link"]')?.getAttribute('href')).toBe('/account');
+  });
+
+  describe('sign-out and push', () => {
+    const clickSignOut = async (fixture: ReturnType<typeof setUp>) => {
+      const router = TestBed.inject(Router);
+      vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      fixture.nativeElement.querySelector('[data-testid="user-menu-button"]').click();
+      fixture.detectChanges();
+      (document.querySelector('[data-testid="sign-out-button"]') as HTMLElement).click();
+      await fixture.whenStable();
+    };
+
+    it('removes this browser\'s push subscription before signing out, while the session is still valid', async () => {
+      const order: string[] = [];
+      const fixture = setUp('admin', {
+        removeCurrentOnSignOut: async () => {
+          order.push('remove-push');
+        },
+        onSignOut: () => order.push('sign-out'),
+      });
+
+      await clickSignOut(fixture);
+
+      expect(order).toEqual(['remove-push', 'sign-out']);
+    });
+
+    it('still signs out and navigates to /sign-in when the push removal has nothing to do', async () => {
+      const onSignOut = vi.fn();
+      const fixture = setUp('admin', { onSignOut });
+
+      await clickSignOut(fixture);
+
+      expect(onSignOut).toHaveBeenCalledTimes(1);
+      expect(TestBed.inject(Router).navigateByUrl).toHaveBeenCalledWith('/sign-in');
+    });
   });
 });

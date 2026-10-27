@@ -42,7 +42,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const logData = {
       method,
-      url,
+      url: SanitizeUtil.sanitizeUrl(url),
       ip,
       correlationId,
       user: user ? SanitizeUtil.sanitize(user) : undefined,

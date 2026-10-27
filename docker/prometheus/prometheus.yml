@@ -29,20 +29,20 @@ scrape_configs:
   - job_name: cron
     metrics_path: /api/metrics
     static_configs:
-      - targets: ['host.docker.internal:3200']
+      - targets: ['host.docker.internal:3400']
         labels:
           app: cron
 
   - job_name: notifications
     metrics_path: /api/metrics
     static_configs:
-      - targets: ['host.docker.internal:3300']
+      - targets: ['host.docker.internal:3200']
         labels:
           app: notifications
 
   - job_name: worker
     metrics_path: /api/metrics
     static_configs:
-      - targets: ['host.docker.internal:3400']
+      - targets: ['host.docker.internal:3300']
         labels:
           app: worker

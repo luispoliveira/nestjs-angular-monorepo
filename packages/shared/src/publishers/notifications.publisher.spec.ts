@@ -61,4 +61,28 @@ describe('NotificationsPublisher', () => {
       expect.objectContaining({ email: 'a@b.com' }),
     );
   });
+
+  it('should emit USER_INVITED on emitUserInvited', () => {
+    publisher.emitUserInvited({
+      userId: 'u1',
+      email: 'a@b.com',
+      invitationLink: 'https://app.test/reset-password?token=t',
+      expiresAt: '2026-10-26T12:00:00.000Z',
+    });
+    expect(client.emit).toHaveBeenCalledWith(
+      EVENT_PATTERNS.USER_INVITED,
+      expect.objectContaining({
+        email: 'a@b.com',
+        invitationLink: 'https://app.test/reset-password?token=t',
+      }),
+    );
+  });
+
+  it('should emit USER_ACCOUNT_ACTIVATED on emitUserAccountActivated', () => {
+    publisher.emitUserAccountActivated({ userId: 'u1', email: 'a@b.com' });
+    expect(client.emit).toHaveBeenCalledWith(
+      EVENT_PATTERNS.USER_ACCOUNT_ACTIVATED,
+      expect.objectContaining({ userId: 'u1', email: 'a@b.com' }),
+    );
+  });
 });

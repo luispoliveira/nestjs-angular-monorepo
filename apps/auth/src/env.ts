@@ -11,6 +11,8 @@ export const authEnvSchema = baseEnvSchema.extend({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   COOKIE_DOMAIN: z.string().optional(),
+  // Days an audit event is kept before it expires (new events only).
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 });
 
 export type AuthEnv = z.infer<typeof authEnvSchema>;

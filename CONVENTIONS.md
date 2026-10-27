@@ -140,8 +140,9 @@ Default job options (set in `QueueModule`):
 - Use NestJS `Logger` (backed by pino). Never use `console.log` except in `main.ts` startup messages.
 - `LoggingInterceptor` persists HTTP request/response to MongoDB. Skipped (as is pino auto-logging and Sentry tracing) for any path with a `/health`, `/metrics` or `/favicon.ico` segment, e.g. `/api/health/live`, via `isSilentPath` in `constants/observability.ts`.
 - `AllExceptionFilter` returns: `{ statusCode, timestamp, path, message, correlationId }`.
-- Throw standard NestJS HTTP exceptions (`NotFoundException`, `BadRequestException`, etc.). Zod validation errors → 422 via `ZodValidationException`.
+- Throw standard NestJS HTTP exceptions (`NotFoundException`, `BadRequestException`, etc.). Zod validation errors → 400 via `ZodValidationException` (response adds an `errors` array of Zod issues).
 - 5xx errors are automatically captured by Sentry via `AllExceptionFilter`.
+- **The request `Log` is not an audit trail.** Use the audit log for "who did what": in `apps/api` mark a write handler with `@Audit('<action>', { targetType, fields })` (declare `fields` on update handlers; actions live in `AUDIT_ACTIONS` in `@repo/shared-types`); in `apps/auth` add the better-auth path to `AUTH_AUDIT_PATHS`. Events store field names, never values, except the fixed `SAFE_CHANGE_FIELDS`.
 
 > There is no tRPC layer. `apps/api` exposes plain REST controllers only —
 > tRPC (and `packages/trpc`) was removed in the Next.js → Angular migration
@@ -238,7 +239,7 @@ Apps (`apps/auth`, `apps/api`, `apps/cron`, `apps/notifications`, `apps/worker`)
 - `packages/database` also excludes: `**/seeders/**`
 - `packages/mail` also excludes: `**/interfaces/**`
 
-**prom-client isolation** — `packages/shared/src/metrics/http-metrics.interceptor.spec.ts` mocks the entire `prom-client` module via `jest.mock('prom-client', ...)` and uses a module-scope `beforeAll` to set up mock counter/histogram instances. Do the same in any spec that imports Prometheus metrics — creating real `Counter`/`Histogram` instances in multiple test files in the same Jest worker causes duplicate-metric registration errors.
+**Prometheus client isolation** — `packages/shared/src/metrics/http-metrics.interceptor.spec.ts` mocks the entire `@prometheus-io/client` module via `jest.mock('@prometheus-io/client', ...)` and uses a module-scope `beforeAll` to set up mock counter/histogram instances. Do the same in any spec that imports Prometheus metrics — creating real `Counter`/`Histogram` instances in multiple test files in the same Jest worker causes duplicate-metric registration errors.
 
 ### Test Database Setup
 
@@ -356,7 +357,7 @@ File suffix: `*.e2e-spec.ts` (picked up by `jest-e2e.json`).
 - No supported single-file filter — `ng test` always runs the whole suite;
   `-- <spec-file>` is not accepted the way Jest-backed app scripts accept it.
 - The Angular CLI requires the Node version pinned in `.nvmrc`
-  (`v24.19.0`) or newer within the same `v22`/`v24`/`v26` minor floor — run
+  (`v26.12.1`) or newer — run
   `nvm use` before `build`/`lint`/`test` if the shell's active Node is older.
 
 ---

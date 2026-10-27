@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import z, { parse } from 'zod';
+import { TRUSTED_PROXY_HOPS } from '../constants/proxy';
 
 const LogLevelEnum = z.enum([
   'log',
@@ -168,6 +169,6 @@ export class BootstrapUtil {
   ) {
     if (!config.trustProxy) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1);
+    (app.getHttpAdapter().getInstance() as any).set('trust proxy', TRUSTED_PROXY_HOPS);
   }
 }

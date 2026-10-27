@@ -3,7 +3,6 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,21 +10,10 @@ import { injectMutation, QueryClient } from '@tanstack/angular-query-experimenta
 import { createUserSchema, RoleEnum, zodValidator } from '@repo/shared-types';
 import { AUTH_CLIENT } from '../../../auth/auth-client.token';
 
-function generatePassword(): string {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
 /**
- * Ports create-user-dialog.tsx's behaviour (design.md → dialog → MatDialog):
- * the password is generated client-side and never sent anywhere but the
- * create-user call itself, so it must be shown to the admin exactly once —
- * the dialog switches from the form step to a password-reveal step instead
- * of closing immediately, matching the pre-migration flow.
+ * Creates an account without a password: apps/auth emails the new user an
+ * invitation to choose their own (account-invitation spec), so no password
+ * ever passes through the administrator and the dialog just closes on success.
  */
 @Component({
   selector: 'app-create-user-dialog',
@@ -36,7 +24,6 @@ function generatePassword(): string {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatIconModule,
   ],
   templateUrl: './create-user-dialog.html',
 })
@@ -55,13 +42,11 @@ export class CreateUserDialog {
   );
 
   protected readonly serverError = signal<string | null>(null);
-  protected readonly generatedPassword = signal<string | null>(null);
-  protected readonly copied = signal(false);
 
   protected readonly createUser = injectMutation(() => ({
-    mutationFn: async (password: string) => {
+    mutationFn: async () => {
       const { name, email, role } = this.form.getRawValue();
-      const { error } = await this.authClient.admin.createUser({ name, email, role, password });
+      const { error } = await this.authClient.admin.createUser({ name, email, role });
       if (error) throw new Error(error.message ?? 'Failed to create user.');
     },
   }));
@@ -73,26 +58,19 @@ export class CreateUserDialog {
     }
 
     this.serverError.set(null);
-    const password = generatePassword();
 
     try {
-      await this.createUser.mutateAsync(password);
+      await this.createUser.mutateAsync();
     } catch (error) {
       this.serverError.set(error instanceof Error ? error.message : 'Failed to create user.');
       return;
     }
 
     await this.queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-    this.snackBar.open('User created', 'Dismiss', { duration: 5000 });
-    this.generatedPassword.set(password);
-  }
-
-  protected async copyPassword(): Promise<void> {
-    const password = this.generatedPassword();
-    if (!password) return;
-    await navigator.clipboard.writeText(password);
-    this.copied.set(true);
-    setTimeout(() => this.copied.set(false), 2000);
+    this.snackBar.open('User created — an invitation was emailed to them', 'Dismiss', {
+      duration: 5000,
+    });
+    this.close();
   }
 
   protected close(): void {

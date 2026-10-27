@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { forgotPasswordSchema, signInSchema, zodValidator } from '@repo/shared-types';
 import { AUTH_CLIENT } from '../../auth/auth-client.token';
+import { SessionService } from '../../auth/session.service';
 
 @Component({
   selector: 'app-sign-in',
@@ -17,6 +18,7 @@ export class SignIn {
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly authClient = inject(AUTH_CLIENT);
+  private readonly session = inject(SessionService);
 
   protected readonly form = this.formBuilder.nonNullable.group(
     { email: [''], password: [''] },
@@ -72,6 +74,10 @@ export class SignIn {
       return;
     }
 
+    // better-auth refreshes the session atom asynchronously; navigating now
+    // would let authGuard read the stale signed-out session and bounce back
+    // (same race SessionService.signedIn() documents for the 2FA path).
+    await this.session.signedIn();
     await this.router.navigateByUrl('/dashboard');
   }
 

@@ -30,6 +30,24 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # The service worker script and its asset manifest must be revalidated on
+    # every load, or a cached copy would pin users to an old build and a new
+    # deploy would never reach them. Declared before the extension block below
+    # (nginx uses the first matching regex location).
+    location ~ ^/(?:ngsw-worker\.js|ngsw\.json|safety-worker\.js)$ {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # nginx's mime.types has no entry for `.webmanifest`, so it would be sent
+    # as application/octet-stream. `default_type` applies exactly to such
+    # unmapped extensions; an exact-match location wins over the regex
+    # blocks below. (Not a `types {}` block: that would replace the whole map.)
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        try_files $uri =404;
+    }
+
     # A request for a known static-asset extension either serves that exact
     # file or 404s — it must NOT fall back to index.html, or a genuinely
     # missing asset (e.g. a stale hashed chunk after a deploy) would

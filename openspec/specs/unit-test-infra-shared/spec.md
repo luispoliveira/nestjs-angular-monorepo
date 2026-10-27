@@ -1,4 +1,10 @@
-## ADDED Requirements
+# unit-test-infra-shared Specification
+
+## Purpose
+
+Ensures packages/shared has a working Jest setup and unit tests for its global NestJS infrastructure: filters, guards, interceptors and producers.
+
+## Requirements
 
 ### Requirement: packages/shared has a working Jest configuration
 
@@ -22,7 +28,7 @@
 - **WHEN** `AllExceptionFilter.catch()` is called with an `HttpException` in HTTP context
 - **THEN** `response.status().json()` is called with `statusCode`, `timestamp`, `path`, `message`, and `correlationId`
 
-#### Scenario: Returns 422 with validation errors for ZodValidationException
+#### Scenario: Returns 400 with validation errors for ZodValidationException
 - **WHEN** `AllExceptionFilter.catch()` is called with a `ZodValidationException`
 - **THEN** `response.status(400).json()` is called with `statusCode: 400`, `message: "Validation failed"`, and `errors` array
 
@@ -114,16 +120,16 @@
 
 ### Requirement: HttpMetricsInterceptor is unit tested
 
-`HttpMetricsInterceptor` SHALL have unit tests covering metric recording for HTTP requests, with prom-client mocked.
+`HttpMetricsInterceptor` SHALL have unit tests covering metric recording for HTTP requests, with `@prometheus-io/client` mocked.
 
 #### Scenario: Records duration and increments counter on success
 - **WHEN** `intercept()` is called for an HTTP request that completes successfully
-- **THEN** prom-client histogram `observe` and counter `inc` are called with method, route, and status labels
+- **THEN** `@prometheus-io/client` histogram `observe` and counter `inc` are called with method, route, and status labels
 
 #### Scenario: Records duration and increments counter on error
 - **WHEN** `intercept()` is called for an HTTP request that throws
-- **THEN** prom-client histogram `observe` and counter `inc` are still called
+- **THEN** `@prometheus-io/client` histogram `observe` and counter `inc` are still called
 
 #### Scenario: Passes through non-HTTP context unchanged
 - **WHEN** `intercept()` is called in RPC context
-- **THEN** prom-client metrics are NOT called
+- **THEN** `@prometheus-io/client` metrics are NOT called

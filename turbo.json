@@ -18,6 +18,15 @@
       "dependsOn": ["db:generate", "^build", "^db:generate", "^lint"]
     },
     "test": {
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "REDIS_HOST",
+        "MONGO_URI",
+        "CORS_ORIGIN",
+        "FIELD_ENCRYPTION_KEY",
+        "FIELD_ENCRYPTION_HMAC_KEY",
+        "VAPID_PUBLIC_KEY"
+      ],
       "dependsOn": ["^build"]
     },
     "test:watch": {

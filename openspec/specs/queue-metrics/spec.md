@@ -10,7 +10,7 @@ Defines the requirements for tracking BullMQ queue and job metrics via Prometheu
 
 ### Requirement: Queue depth is tracked per job state as a gauge
 
-The worker app SHALL expose a Gauge `bullmq_queue_depth{queue, state}` reporting the count of jobs per queue per state (`waiting`, `active`, `delayed`, `failed`). The gauge SHALL be collected lazily at scrape time using `prom-client`'s `collect()` callback; no interval timer SHALL be used.
+The worker app SHALL expose a Gauge `bullmq_queue_depth{queue, state}` reporting the count of jobs per queue per state (`waiting`, `active`, `delayed`, `failed`). The gauge SHALL be collected lazily at scrape time using `@prometheus-io/client`'s `collect()` callback; no interval timer SHALL be used.
 
 #### Scenario: Queue depth collected at scrape time
 

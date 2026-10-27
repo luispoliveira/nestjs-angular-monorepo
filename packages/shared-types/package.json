@@ -17,7 +17,7 @@
     }
   },
   "dependencies": {
-    "zod": "~4.6.5"
+    "zod": "~4.6.7"
   },
   "peerDependencies": {
     "@angular/forms": "^22.0.0"
@@ -28,11 +28,11 @@
     }
   },
   "devDependencies": {
-    "@angular/forms": "^22.2.0",
+    "@angular/forms": "^22.2.3",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.5",
     "jest": "^30.5.2",
-    "ts-jest": "^29.4.14",
+    "ts-jest": "^29.4.15",
     "typescript": "^6.0.3"
   },
   "jest": {

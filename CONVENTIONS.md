@@ -239,7 +239,7 @@ Apps (`apps/auth`, `apps/api`, `apps/cron`, `apps/notifications`, `apps/worker`)
 - `packages/database` also excludes: `**/seeders/**`
 - `packages/mail` also excludes: `**/interfaces/**`
 
-**prom-client isolation** — `packages/shared/src/metrics/http-metrics.interceptor.spec.ts` mocks the entire `prom-client` module via `jest.mock('prom-client', ...)` and uses a module-scope `beforeAll` to set up mock counter/histogram instances. Do the same in any spec that imports Prometheus metrics — creating real `Counter`/`Histogram` instances in multiple test files in the same Jest worker causes duplicate-metric registration errors.
+**Prometheus client isolation** — `packages/shared/src/metrics/http-metrics.interceptor.spec.ts` mocks the entire `@prometheus-io/client` module via `jest.mock('@prometheus-io/client', ...)` and uses a module-scope `beforeAll` to set up mock counter/histogram instances. Do the same in any spec that imports Prometheus metrics — creating real `Counter`/`Histogram` instances in multiple test files in the same Jest worker causes duplicate-metric registration errors.
 
 ### Test Database Setup
 

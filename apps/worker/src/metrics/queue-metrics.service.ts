@@ -1,13 +1,15 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Counter, Gauge, Histogram } from '@prometheus-io/client';
 import { QUEUES } from '@repo/shared';
 import { Queue } from 'bullmq';
-import { Counter, Gauge, Histogram } from 'prom-client';
+
+type JobLabel = 'queue' | 'job_name';
 
 @Injectable()
 export class QueueMetricsService implements OnModuleInit {
-  private durationHistogram!: Histogram;
-  private failureCounter!: Counter;
+  private durationHistogram!: Histogram<JobLabel>;
+  private failureCounter!: Counter<JobLabel>;
 
   constructor(
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,

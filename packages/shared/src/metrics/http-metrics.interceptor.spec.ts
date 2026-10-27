@@ -1,9 +1,9 @@
 import { CallHandler, ExecutionContext } from '@nestjs/common';
-import { Counter, Histogram } from 'prom-client';
+import { Counter, Histogram } from '@prometheus-io/client';
 import { Observable, of, throwError } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
 
-jest.mock('prom-client', () => ({
+jest.mock('@prometheus-io/client', () => ({
   Histogram: jest.fn().mockReturnValue({ observe: jest.fn() }),
   Counter: jest.fn().mockReturnValue({ inc: jest.fn() }),
 }));

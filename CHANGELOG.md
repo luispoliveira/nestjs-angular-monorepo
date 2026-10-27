@@ -1,3 +1,11 @@
+## v1.9.0 (2026-10-27)
+
+## What's Changed
+* Release version 1.9.0 by @luispoliveira in https://github.com/luispoliveira/nestjs-angular-monorepo/pull/36
+
+
+**Full Changelog**: https://github.com/luispoliveira/nestjs-angular-monorepo/compare/v1.8.1...v1.9.0
+
 ## v1.8.1 (2026-09-30)
 
 ## What's Changed
